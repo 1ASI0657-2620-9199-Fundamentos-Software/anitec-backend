@@ -48,6 +48,15 @@ public class AuthorizeAttribute : Attribute, IAuthorizationFilter
         }
 
         if (_roles.Length > 0 && !_roles.Any(role => role.Equals(user.Role, StringComparison.OrdinalIgnoreCase)))
-            context.Result = new ForbidResult();
+            // ForbidResult needs an authentication scheme, which AniTec does not register, and would end in a 500.
+            context.Result = new ObjectResult(new
+            {
+                title = "Forbidden",
+                status = StatusCodes.Status403Forbidden,
+                detail = "The role of the authenticated user cannot use this resource."
+            })
+            {
+                StatusCode = StatusCodes.Status403Forbidden
+            };
     }
 }
