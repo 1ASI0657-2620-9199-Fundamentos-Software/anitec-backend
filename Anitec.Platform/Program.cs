@@ -100,6 +100,7 @@ builder.Services.AddControllers(options => options.Conventions.Add(new KebabCase
     .AddDataAnnotationsLocalization();
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
 // Only the frontends listed in Cors:AllowedOrigins may call the API from a browser.
 // Override them with environment variables such as Cors__AllowedOrigins__0.
@@ -304,4 +305,5 @@ if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.Run();

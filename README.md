@@ -141,3 +141,17 @@ Para comprobar que el backend compila:
 cd C:\Users\melga\Desktop\TrabajoFinalAppWeb\anitec-backend
 dotnet build
 ```
+
+## Ejecucion local con Docker Compose (balanceador y dos replicas)
+
+`docker-compose.yml` levanta MySQL 8.4, dos replicas de la API (`api1` y `api2`) y un balanceador nginx con round-robin. Las replicas no guardan sesion (JWT) y comparten la carpeta de imagenes subidas mediante un volumen.
+
+```bash
+cp .env.example .env        # ajusta los valores; .env no se versiona
+docker compose up --build
+```
+
+- La API balanceada responde en `http://localhost:8080` (Swagger en `/swagger`, estado en `/health`).
+- La cabecera `X-Upstream` de cada respuesta indica la replica que atendio la peticion.
+- El entorno corre en `Development`, por lo que se cargan los usuarios de demostracion (clave `anitec123`).
+- Para detener una replica y comprobar la continuidad del servicio: `docker compose stop api1`.
