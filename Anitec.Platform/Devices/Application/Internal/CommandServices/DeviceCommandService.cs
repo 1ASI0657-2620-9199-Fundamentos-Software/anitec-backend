@@ -2,18 +2,16 @@ using Anitec.Platform.Devices.Application.CommandServices;
 using Anitec.Platform.Devices.Domain.Model.Commands;
 using Anitec.Platform.Devices.Domain.Model;
 using Anitec.Platform.Devices.Domain.Model.Entities;
+using Anitec.Platform.Devices.Application.Internal;
 using Anitec.Platform.Devices.Domain.Repositories;
-using Anitec.Platform.Iam.Application.Internal.OutboundServices;
 using System.Security.Cryptography;
 using Anitec.Platform.Shared.Application.Model;
 using Anitec.Platform.Shared.Domain.Repositories;
 
 namespace Anitec.Platform.Devices.Application.Internal.CommandServices;
 
-public class DeviceCommandService(
-    IDeviceRepository repository,
-    IUnitOfWork unitOfWork,
-    IHashingService hashingService) : IDeviceCommandService
+public class DeviceCommandService(IDeviceRepository repository, IUnitOfWork unitOfWork)
+    : IDeviceCommandService
 {
     public async Task<Result<Device>> Handle(CreateDeviceCommand command, CancellationToken cancellationToken)
     {
@@ -44,10 +42,10 @@ public class DeviceCommandService(
         var entity = await repository.FindByIdAsync(command.DeviceId, cancellationToken);
         if (entity is null) return Result<string>.Failure(DevicesError.DeviceNotFound, "Device not found.");
 
-        // 256 random bits; only the hash is stored, so the key is visible only in this response.
+        // 256 random bits; only its SHA-256 hash is stored, so the key is visible only in this response.
         var apiKey = "ak_" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
-        entity.ApiKeyHash = hashingService.HashPassword(apiKey);
+        entity.ApiKeyHash = DeviceApiKeyHasher.Hash(apiKey);
 
         repository.Update(entity);
         await unitOfWork.CompleteAsync(cancellationToken);

@@ -32,7 +32,7 @@ public class Device
     public int? AnimalId { get; set; }
 
     /// <summary>
-    ///     BCrypt hash of the API key that the physical device uses to authenticate. The key itself is
+    ///     SHA-256 hash (hex) of the API key that the physical device uses to authenticate. The key itself is
     ///     shown once when it is issued and is never stored.
     /// </summary>
     public string? ApiKeyHash { get; set; }

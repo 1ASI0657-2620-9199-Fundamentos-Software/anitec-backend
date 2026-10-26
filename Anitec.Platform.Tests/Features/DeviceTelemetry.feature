@@ -10,7 +10,7 @@ Feature: Device authentication for telemetry ingestion
   Scenario: Issuing a key returns it once and stores only its hash
     When an API key is issued for "Collar Luna"
     Then the key starts with "ak_"
-    And the stored value for "Collar Luna" is a hash and not the key
+    And the stored value for "Collar Luna" is a SHA-256 hash and not the key
 
   Scenario: A valid key authenticates the device
     Given an API key was issued for "Collar Luna"

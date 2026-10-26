@@ -133,9 +133,13 @@ var telemetryIntervalSeconds = builder.Configuration.GetValue("Telemetry:MinInte
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // The window is per device and per key presented: a request with a wrong key falls in its own window,
+    // so it cannot use up the interval of the real device.
     options.AddPolicy("telemetry", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Request.RouteValues["deviceId"]?.ToString() ?? "unknown",
+            (httpContext.Request.RouteValues["deviceId"]?.ToString() ?? "unknown") + ":"
+            + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(httpContext.Request.Headers["X-Device-Api-Key"].ToString())))[..16],
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 1,

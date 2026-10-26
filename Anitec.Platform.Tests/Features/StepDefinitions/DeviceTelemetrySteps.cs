@@ -4,7 +4,6 @@ using Anitec.Platform.Devices.Domain.Model.Commands;
 using Anitec.Platform.Devices.Domain.Model.Entities;
 using Anitec.Platform.Devices.Domain.Model.Queries;
 using Anitec.Platform.Devices.Infrastructure.Pipeline;
-using Anitec.Platform.Iam.Infrastructure.Hashing.BCrypt.Services;
 using Anitec.Platform.Shared.Application.Model;
 using Anitec.Platform.Tests.Support;
 using Microsoft.AspNetCore.Http;
@@ -19,7 +18,6 @@ namespace Anitec.Platform.Tests.Features.StepDefinitions;
 
 public class DeviceTelemetryWorld
 {
-    private readonly HashingService _hashing = new();
     public InMemoryDeviceRepository Devices { get; } = new();
     public CountingUnitOfWork UnitOfWork { get; } = new();
     public Dictionary<string, string> Keys { get; } = new();
@@ -31,12 +29,12 @@ public class DeviceTelemetryWorld
 
     public DeviceCommandService CreateCommandService()
     {
-        return new DeviceCommandService(Devices, UnitOfWork, _hashing);
+        return new DeviceCommandService(Devices, UnitOfWork);
     }
 
     public DeviceQueryService CreateQueryService()
     {
-        return new DeviceQueryService(Devices, _hashing);
+        return new DeviceQueryService(Devices);
     }
 }
 
@@ -125,13 +123,14 @@ public class DeviceTelemetrySteps(DeviceTelemetryWorld world)
         Assert.StartsWith(prefix, world.LastIssuedKey);
     }
 
-    [Then(@"the stored value for ""(.*)"" is a hash and not the key")]
+    [Then(@"the stored value for ""(.*)"" is a SHA-256 hash and not the key")]
     public void ThenTheStoredValueIsAHash(string name)
     {
         var stored = Named(name).ApiKeyHash;
         Assert.NotNull(stored);
         Assert.NotEqual(world.LastIssuedKey, stored);
-        Assert.StartsWith("$2", stored);
+        Assert.Equal(64, stored!.Length);
+        Assert.Matches("^[0-9A-F]+$", stored);
     }
 
     [Then("the device is authenticated")]
