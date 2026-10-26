@@ -1,5 +1,6 @@
 using System.Net.Mime;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Livestock.Application.CommandServices;
 using Anitec.Platform.Livestock.Application.QueryServices;
 using Anitec.Platform.Livestock.Domain.Model.Commands;
@@ -25,14 +26,20 @@ public class AnimalsController(
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetAllAnimalsQuery(), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetAnimalsForCallerQuery(caller), cancellationToken);
         return Ok(result.Select(AnimalResourceFromEntityAssembler.ToResourceFromEntity));
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetAnimalByIdQuery(id), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetAnimalByIdForCallerQuery(id, caller), cancellationToken);
         if (result is null) return NotFound();
         return Ok(AnimalResourceFromEntityAssembler.ToResourceFromEntity(result));
     }
@@ -41,8 +48,13 @@ public class AnimalsController(
     [HttpPost]
     public async Task<IActionResult> Create(CreateAnimalResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
         var errors = ValidateAnimalResource(resource);
         if (errors.Count > 0) return BadRequest(new { message = "One or more fields are invalid.", errors });
+        if (!await queryService.Handle(new IsHerdOwnedByCallerQuery(resource.HerdId, caller), cancellationToken))
+            return NotFound();
 
         var command = CreateAnimalCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);
@@ -54,8 +66,14 @@ public class AnimalsController(
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CreateAnimalResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
         var errors = ValidateAnimalResource(resource);
         if (errors.Count > 0) return BadRequest(new { message = "One or more fields are invalid.", errors });
+        if (!await queryService.Handle(new AreAnimalsOwnedByCallerQuery([id], caller), cancellationToken)
+            || !await queryService.Handle(new IsHerdOwnedByCallerQuery(resource.HerdId, caller), cancellationToken))
+            return NotFound();
 
         var command = UpdateAnimalCommandFromResourceAssembler.ToCommandFromResource(id, resource);
         var result = await commandService.Handle(command, cancellationToken);
@@ -81,6 +99,11 @@ public class AnimalsController(
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (!await queryService.Handle(new AreAnimalsOwnedByCallerQuery([id], caller), cancellationToken))
+            return NotFound();
+
         var result = await commandService.Handle(new DeleteAnimalCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
         return NoContent();
@@ -90,6 +113,9 @@ public class AnimalsController(
     [HttpPost("bulk")]
     public async Task<IActionResult> CreateBatch(CreateAnimalBatchResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(resource.Species)) errors.Add("Animal type is required.");
         if (string.IsNullOrWhiteSpace(resource.Breed)) errors.Add("Breed is required.");
@@ -99,6 +125,8 @@ public class AnimalsController(
         if (resource.Quantity is < 1 or > 500) errors.Add("Quantity must be between 1 and 500.");
         if (resource.Weight < 0) errors.Add("Weight cannot be negative.");
         if (errors.Count > 0) return BadRequest(new { message = "One or more fields are invalid.", errors });
+        if (!await queryService.Handle(new IsHerdOwnedByCallerQuery(resource.HerdId, caller), cancellationToken))
+            return NotFound();
 
         var command = CreateAnimalBatchCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);
@@ -110,9 +138,14 @@ public class AnimalsController(
     [HttpPatch("bulk-status")]
     public async Task<IActionResult> UpdateBulkStatus(UpdateAnimalsStatusResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
         if (resource.AnimalIds is null || resource.AnimalIds.Count == 0)
             return BadRequest(new { message = "At least one animal must be selected." });
         if (string.IsNullOrWhiteSpace(resource.Status)) return BadRequest(new { message = "Status is required." });
+        if (!await queryService.Handle(new AreAnimalsOwnedByCallerQuery(resource.AnimalIds, caller), cancellationToken))
+            return NotFound();
 
         var command = new UpdateAnimalsStatusCommand(resource.AnimalIds, resource.Status);
         var result = await commandService.Handle(command, cancellationToken);
@@ -124,8 +157,13 @@ public class AnimalsController(
     [HttpDelete("bulk")]
     public async Task<IActionResult> DeleteBatch(DeleteAnimalsResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
         if (resource.AnimalIds is null || resource.AnimalIds.Count == 0)
             return BadRequest(new { message = "At least one animal must be selected." });
+        if (!await queryService.Handle(new AreAnimalsOwnedByCallerQuery(resource.AnimalIds, caller), cancellationToken))
+            return NotFound();
 
         var result = await commandService.Handle(new DeleteAnimalsCommand(resource.AnimalIds), cancellationToken);
         if (result.IsFailure) return BadRequest(new { message = result.Message });

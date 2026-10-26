@@ -3,12 +3,14 @@ using Anitec.Platform.Activities.Application.QueryServices;
 using Anitec.Platform.Activities.Domain.Model.Queries;
 using Anitec.Platform.Analytics.Interfaces.Rest.Resources;
 using Anitec.Platform.Clients.Application.QueryServices;
+using Anitec.Platform.Clients.Domain.Model;
 using Anitec.Platform.Clients.Domain.Model.Queries;
 using Anitec.Platform.Devices.Application.QueryServices;
 using Anitec.Platform.Devices.Domain.Model.Queries;
 using Anitec.Platform.Financial.Application.QueryServices;
 using Anitec.Platform.Financial.Domain.Model.Queries;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Livestock.Application.QueryServices;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Livestock.Domain.Model.Queries;
@@ -36,6 +38,8 @@ public class DashboardAnalyticsController(
     [HttpGet("ranchers/{rancherId:int}/dashboard")]
     public async Task<IActionResult> GetRancherDashboard(int rancherId, CancellationToken cancellationToken)
     {
+        if (!IsRancherOwner(rancherId, out var denied)) return denied!;
+
         var herds = (await herdQueryService.Handle(new GetAllHerdsQuery(), cancellationToken))
             .Where(herd => herd.OwnerId == rancherId)
             .ToList();
@@ -81,12 +85,18 @@ public class DashboardAnalyticsController(
     [HttpGet("veterinarians/{veterinarianId:int}/dashboard")]
     public async Task<IActionResult> GetVeterinarianDashboard(int veterinarianId, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (!caller.IsVeterinarian || caller.Id != veterinarianId) return StatusCode(StatusCodes.Status403Forbidden);
+
         var clients = (await veterinarianClientQueryService.Handle(
-            new GetVeterinarianClientsByVeterinarianIdQuery(veterinarianId),
-            cancellationToken)).ToList();
+                new GetVeterinarianClientsByVeterinarianIdQuery(veterinarianId),
+                cancellationToken))
+            .Where(client => VeterinarianClientStatus.IsAccepted(client.Status))
+            .ToList();
         var rancherIds = clients.Select(client => client.RancherId).ToHashSet();
         var herds = (await herdQueryService.Handle(new GetAllHerdsQuery(), cancellationToken))
-            .Where(herd => rancherIds.Contains(herd.OwnerId) || herd.VeterinarianId == veterinarianId)
+            .Where(herd => rancherIds.Contains(herd.OwnerId))
             .ToList();
         var animals = await GetAnimalsForHerds(herds, cancellationToken);
         var animalIds = animals.Select(animal => animal.Id).ToHashSet();
@@ -109,6 +119,8 @@ public class DashboardAnalyticsController(
     [HttpGet("ranchers/{rancherId:int}/health-summary")]
     public async Task<IActionResult> GetRancherHealthSummary(int rancherId, CancellationToken cancellationToken)
     {
+        if (!IsRancherOwner(rancherId, out var denied)) return denied!;
+
         var herds = (await herdQueryService.Handle(new GetAllHerdsQuery(), cancellationToken))
             .Where(herd => herd.OwnerId == rancherId)
             .ToList();
@@ -128,6 +140,8 @@ public class DashboardAnalyticsController(
     [HttpGet("ranchers/{rancherId:int}/financial-summary")]
     public async Task<IActionResult> GetRancherFinancialSummary(int rancherId, CancellationToken cancellationToken)
     {
+        if (!IsRancherOwner(rancherId, out var denied)) return denied!;
+
         var records = (await financialRecordQueryService.Handle(new GetAllFinancialRecordsQuery(), cancellationToken))
             .Where(record => record.OwnerId == rancherId)
             .ToList();
@@ -147,6 +161,28 @@ public class DashboardAnalyticsController(
             records
                 .GroupBy(record => record.Category)
                 .Select(group => new MetricSliceResource(group.Key, group.Sum(record => record.Amount)))));
+    }
+
+    /// <summary>
+    ///     The rancher dashboards are personal: the id in the route must be the id of the authenticated rancher.
+    /// </summary>
+    private bool IsRancherOwner(int rancherId, out IActionResult? denied)
+    {
+        var caller = HttpContext.GetCaller();
+        if (caller is null)
+        {
+            denied = Unauthorized();
+            return false;
+        }
+
+        if (!caller.IsRancher || caller.Id != rancherId)
+        {
+            denied = StatusCode(StatusCodes.Status403Forbidden);
+            return false;
+        }
+
+        denied = null;
+        return true;
     }
 
     private async Task<List<Animal>> GetAnimalsForHerds(IEnumerable<Herd> herds, CancellationToken cancellationToken)

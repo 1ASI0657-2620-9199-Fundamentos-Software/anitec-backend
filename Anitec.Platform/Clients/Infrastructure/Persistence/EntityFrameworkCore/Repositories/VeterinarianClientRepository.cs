@@ -18,6 +18,15 @@ public class VeterinarianClientRepository(AppDbContext context)
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IEnumerable<VeterinarianClient>> FindByRancherIdAsync(
+        int rancherId,
+        CancellationToken cancellationToken)
+    {
+        return await Context.Set<VeterinarianClient>()
+            .Where(client => client.RancherId == rancherId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<VeterinarianClient?> FindByVeterinarianIdAndRancherIdAsync(
         int veterinarianId,
         int rancherId,
