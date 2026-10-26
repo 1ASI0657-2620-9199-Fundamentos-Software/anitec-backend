@@ -1,4 +1,5 @@
 using Anitec.Platform.Clients.Application.QueryServices;
+using Anitec.Platform.Clients.Domain.Model;
 using Anitec.Platform.Clients.Domain.Model.Entities;
 using Anitec.Platform.Clients.Domain.Model.Queries;
 using Anitec.Platform.Clients.Domain.Repositories;
@@ -12,5 +13,23 @@ public class VeterinarianClientQueryService(IVeterinarianClientRepository reposi
         CancellationToken cancellationToken)
     {
         return await repository.FindByVeterinarianIdAsync(query.VeterinarianId, cancellationToken);
+    }
+
+    public async Task<IEnumerable<VeterinarianClient>> Handle(
+        GetVeterinarianRequestsByRancherIdQuery query,
+        CancellationToken cancellationToken)
+    {
+        return await repository.FindByRancherIdAsync(query.RancherId, cancellationToken);
+    }
+
+    public async Task<IReadOnlySet<int>> Handle(
+        GetAcceptedRancherIdsByVeterinarianIdQuery query,
+        CancellationToken cancellationToken)
+    {
+        var relationships = await repository.FindByVeterinarianIdAsync(query.VeterinarianId, cancellationToken);
+        return relationships
+            .Where(relationship => VeterinarianClientStatus.IsAccepted(relationship.Status))
+            .Select(relationship => relationship.RancherId)
+            .ToHashSet();
     }
 }

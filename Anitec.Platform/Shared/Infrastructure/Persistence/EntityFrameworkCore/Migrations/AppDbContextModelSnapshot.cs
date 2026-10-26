@@ -110,6 +110,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasColumnType("datetime(6)")
                         .HasColumnName("accepted_at");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
                     b.Property<int>("RancherId")
                         .HasColumnType("int")
                         .HasColumnName("rancher_id");
@@ -123,6 +127,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)")
                         .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
 
                     b.Property<int>("VeterinarianId")
                         .HasColumnType("int")
@@ -148,6 +156,11 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                     b.Property<int?>("AnimalId")
                         .HasColumnType("int")
                         .HasColumnName("animal_id");
+
+                    b.Property<string>("ApiKeyHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("api_key_hash");
 
                     b.Property<int?>("HerdId")
                         .HasColumnType("int")
@@ -272,6 +285,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
 
                     b.HasKey("Id")
                         .HasName("p_k_users");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("i_x_users_username");
 
                     b.ToTable("users");
                 });

@@ -88,6 +88,12 @@ public class UserCommandService(
         }
         catch (DbUpdateException)
         {
+            // Two sign-ups with the same username can pass the check above at the same time; the unique
+            // index rejects the second one and the caller gets the same error as a normal duplicate.
+            if (await userRepository.ExistsByUsernameAsync(command.Username, cancellationToken))
+                return Result.Failure(IamError.UsernameAlreadyTaken,
+                    _localizer[nameof(IamError.UsernameAlreadyTaken), command.Username]);
+
             // Log the exception details here if an ILogger is injected
             return Result.Failure(IamError.DatabaseError, _localizer[nameof(IamError.DatabaseError)]);
         }

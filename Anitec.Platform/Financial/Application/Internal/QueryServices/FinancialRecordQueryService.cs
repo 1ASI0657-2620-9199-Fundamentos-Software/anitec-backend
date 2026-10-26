@@ -16,8 +16,20 @@ public class FinancialRecordQueryService(IFinancialRecordRepository repository) 
     {
         return await repository.ListAsync(cancellationToken);
     }
+
+    public async Task<IEnumerable<FinancialRecord>> Handle(GetFinancialRecordsForCallerQuery query, CancellationToken cancellationToken)
+    {
+        if (!query.Caller.IsRancher) return [];
+
+        var records = await repository.ListAsync(cancellationToken);
+        return records.Where(record => record.OwnerId == query.Caller.Id).ToList();
+    }
+
+    public async Task<FinancialRecord?> Handle(GetFinancialRecordByIdForCallerQuery query, CancellationToken cancellationToken)
+    {
+        if (!query.Caller.IsRancher) return null;
+
+        var record = await repository.FindByIdAsync(query.Id, cancellationToken);
+        return record is not null && record.OwnerId == query.Caller.Id ? record : null;
+    }
 }
-
-
-
-

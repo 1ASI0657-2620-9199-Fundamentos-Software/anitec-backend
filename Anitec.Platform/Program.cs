@@ -22,6 +22,7 @@ using Anitec.Platform.Devices.Application.Internal.QueryServices;
 using Anitec.Platform.Devices.Application.QueryServices;
 using Anitec.Platform.Devices.Domain.Repositories;
 using Anitec.Platform.Devices.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Devices.Infrastructure.Pipeline;
 using Anitec.Platform.Financial.Application.CommandServices;
 using Anitec.Platform.Financial.Application.Internal.CommandServices;
 using Anitec.Platform.Financial.Application.Internal.QueryServices;
@@ -97,11 +98,15 @@ builder.Services.AddControllers(options => options.Conventions.Add(new KebabCase
     .AddDataAnnotationsLocalization();
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
+// Only the frontends listed in Cors:AllowedOrigins may call the API from a browser.
+// Override them with environment variables such as Cors__AllowedOrigins__0.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllPolicy",
-        policy => policy.AllowAnyOrigin()
+    options.AddPolicy("AllowedFrontends",
+        policy => policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
@@ -206,6 +211,7 @@ builder.Services.AddScoped<IVeterinarianClientQueryService, VeterinarianClientQu
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeviceCommandService, DeviceCommandService>();
 builder.Services.AddScoped<IDeviceQueryService, DeviceQueryService>();
+builder.Services.AddScoped<DeviceApiKeyFilter>();
 
 // Metrics Bounded Context
 builder.Services.AddScoped<IDeviceMetricRepository, DeviceMetricRepository>();
@@ -273,10 +279,11 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 
 app.UseStaticFiles();
 
-app.UseCors("AllowAllPolicy");
+app.UseCors("AllowedFrontends");
 app.UseRequestAuthorization();
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.Run();

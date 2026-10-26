@@ -7,6 +7,11 @@ public interface IDeviceQueryService
 {
     Task<Device?> Handle(GetDeviceByIdQuery query, CancellationToken cancellationToken);
     Task<IEnumerable<Device>> Handle(GetAllDevicesQuery query, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Returns the device when the API key matches the one issued for it, otherwise <c>null</c>.
+    /// </summary>
+    Task<Device?> Handle(AuthenticateDeviceQuery query, CancellationToken cancellationToken);
 }
 
 

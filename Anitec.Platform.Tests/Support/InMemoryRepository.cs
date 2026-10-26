@@ -1,7 +1,19 @@
+using Anitec.Platform.Activities.Domain.Model.Entities;
+using Anitec.Platform.Activities.Domain.Repositories;
+using Anitec.Platform.Clients.Domain.Model.Entities;
+using Anitec.Platform.Clients.Domain.Repositories;
+using Anitec.Platform.Devices.Domain.Model.Entities;
+using Anitec.Platform.Devices.Domain.Repositories;
+using Anitec.Platform.Financial.Domain.Model.Entities;
+using Anitec.Platform.Financial.Domain.Repositories;
 using Anitec.Platform.Iam.Domain.Model.Aggregates;
 using Anitec.Platform.Iam.Domain.Repositories;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Livestock.Domain.Repositories;
+using Anitec.Platform.Metrics.Domain.Model.Entities;
+using Anitec.Platform.Metrics.Domain.Repositories;
+using Anitec.Platform.Sanitary.Domain.Model.Entities;
+using Anitec.Platform.Sanitary.Domain.Repositories;
 using Anitec.Platform.Shared.Domain.Repositories;
 
 namespace Anitec.Platform.Tests.Support;
@@ -67,6 +79,67 @@ public class InMemoryUserRepository() : InMemoryRepository<User>(u => u.Id), IUs
     }
 }
 
+public class InMemoryHerdRepository()
+    : InMemoryRepository<Herd>(h => h.Id, (h, id) => h.Id = id), IHerdRepository
+{
+    public Herd Seed(string name, int ownerId)
+    {
+        var herd = new Herd { Name = name, OwnerId = ownerId };
+        AddAsync(herd).GetAwaiter().GetResult();
+        return herd;
+    }
+}
+
+public class InMemoryDeviceRepository()
+    : InMemoryRepository<Device>(d => d.Id, (d, id) => d.Id = id), IDeviceRepository;
+
+public class InMemoryHealthEventRepository()
+    : InMemoryRepository<HealthEvent>(e => e.Id, (e, id) => e.Id = id), IHealthEventRepository;
+
+public class InMemoryFinancialRecordRepository()
+    : InMemoryRepository<FinancialRecord>(r => r.Id, (r, id) => r.Id = id), IFinancialRecordRepository;
+
+public class InMemoryFarmActivityRepository()
+    : InMemoryRepository<FarmActivity>(a => a.Id, (a, id) => a.Id = id), IFarmActivityRepository;
+
+public class InMemoryVeterinarianClientRepository()
+    : InMemoryRepository<VeterinarianClient>(c => c.Id, (c, id) => c.Id = id), IVeterinarianClientRepository
+{
+    public Task<IEnumerable<VeterinarianClient>> FindByVeterinarianIdAsync(int veterinarianId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IEnumerable<VeterinarianClient>>(
+            Items.Where(c => c.VeterinarianId == veterinarianId).ToList());
+    }
+
+    public Task<IEnumerable<VeterinarianClient>> FindByRancherIdAsync(int rancherId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IEnumerable<VeterinarianClient>>(
+            Items.Where(c => c.RancherId == rancherId).ToList());
+    }
+
+    public Task<VeterinarianClient?> FindByVeterinarianIdAndRancherIdAsync(int veterinarianId, int rancherId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Items.FirstOrDefault(c => c.VeterinarianId == veterinarianId && c.RancherId == rancherId));
+    }
+
+    public Task<bool> ExistsByVeterinarianIdAndRancherIdAsync(int veterinarianId, int rancherId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Items.Any(c => c.VeterinarianId == veterinarianId && c.RancherId == rancherId));
+    }
+
+    public VeterinarianClient Seed(int veterinarianId, int rancherId, string status)
+    {
+        var relationship = new VeterinarianClient
+        {
+            VeterinarianId = veterinarianId,
+            RancherId = rancherId,
+            Status = status
+        };
+        AddAsync(relationship).GetAwaiter().GetResult();
+        return relationship;
+    }
+}
+
 public class CountingUnitOfWork : IUnitOfWork
 {
     public int CompleteCalls { get; private set; }
@@ -75,5 +148,14 @@ public class CountingUnitOfWork : IUnitOfWork
     {
         CompleteCalls++;
         return Task.CompletedTask;
+    }
+}
+
+public class InMemoryDeviceMetricRepository()
+    : InMemoryRepository<DeviceMetric>(m => m.Id, (m, id) => m.Id = id), IDeviceMetricRepository
+{
+    public Task<DeviceMetric?> FindLatestByDeviceIdAsync(int deviceId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Items.Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAt).FirstOrDefault());
     }
 }

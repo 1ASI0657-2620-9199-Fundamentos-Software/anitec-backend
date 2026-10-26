@@ -5,7 +5,13 @@ using Anitec.Platform.Devices.Domain.Model.Commands;
 using Anitec.Platform.Devices.Domain.Model.Queries;
 using Anitec.Platform.Devices.Interfaces.Rest.Resources;
 using Anitec.Platform.Devices.Interfaces.Rest.Transform;
+using Anitec.Platform.Devices.Domain.Model.Entities;
+using Anitec.Platform.Devices.Infrastructure.Pipeline;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
+using Anitec.Platform.Livestock.Application.QueryServices;
+using Anitec.Platform.Livestock.Domain.Model.Queries;
+using Anitec.Platform.Shared.Domain.Model;
 using Anitec.Platform.Metrics.Application.QueryServices;
 using Anitec.Platform.Metrics.Domain.Model.Queries;
 using Anitec.Platform.Metrics.Interfaces.Rest.Transform;
@@ -22,7 +28,8 @@ namespace Anitec.Platform.Devices.Interfaces.Rest;
 public class DevicesController(
     IDeviceCommandService commandService,
     IDeviceQueryService queryService,
-    IDeviceMetricQueryService metricQueryService) : ControllerBase
+    IDeviceMetricQueryService metricQueryService,
+    IAnimalQueryService animalQueryService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
@@ -68,6 +75,27 @@ public class DevicesController(
         return NoContent();
     }
 
+    /// <summary>
+    ///     Issues or rotates the API key that the physical device uses to send telemetry. The key is shown
+    ///     once and only its hash is stored.
+    /// </summary>
+    [Authorize("Rancher")]
+    [HttpPost("{id:int}/api-key")]
+    public async Task<IActionResult> IssueApiKey(int id, CancellationToken cancellationToken)
+    {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        if (device is null || !await IsOwnedByCallerAsync(device, caller, cancellationToken)) return NotFound();
+
+        var result = await commandService.Handle(new IssueDeviceApiKeyCommand(id), cancellationToken);
+        if (result.IsFailure) return NotFound();
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new DeviceApiKeyResource(id, result.Value!, DeviceApiKeyFilter.HeaderName));
+    }
+
     [HttpGet("{id:int}/metrics")]
     public async Task<IActionResult> GetMetricsByDevice(int id, CancellationToken cancellationToken)
     {
@@ -96,5 +124,14 @@ public class DevicesController(
         if (latest is null) return NotFound();
 
         return Ok(DeviceMetricResourceFromEntityAssembler.ToResourceFromEntity(latest));
+    }
+
+    private async Task<bool> IsOwnedByCallerAsync(Device device, CallerContext caller, CancellationToken cancellationToken)
+    {
+        if (device.HerdId is { } herdId)
+            return await animalQueryService.Handle(new IsHerdOwnedByCallerQuery(herdId, caller), cancellationToken);
+        if (device.AnimalId is { } animalId)
+            return await animalQueryService.Handle(new AreAnimalsOwnedByCallerQuery([animalId], caller), cancellationToken);
+        return false;
     }
 }

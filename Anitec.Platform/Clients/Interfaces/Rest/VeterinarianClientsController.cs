@@ -9,6 +9,7 @@ using Anitec.Platform.Iam.Application.QueryServices;
 using Anitec.Platform.Iam.Domain.Model.Aggregates;
 using Anitec.Platform.Iam.Domain.Model.Queries;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Livestock.Application.QueryServices;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Livestock.Domain.Model.Queries;
@@ -32,6 +33,8 @@ public class VeterinarianClientsController(
     [HttpGet("{veterinarianId:int}/clients")]
     public async Task<IActionResult> GetClients(int veterinarianId, CancellationToken cancellationToken)
     {
+        if (!IsCallerVeterinarian(veterinarianId, out var denied)) return denied!;
+
         var relationships = await queryService.Handle(
             new GetVeterinarianClientsByVeterinarianIdQuery(veterinarianId),
             cancellationToken);
@@ -51,10 +54,16 @@ public class VeterinarianClientsController(
     [HttpGet("{veterinarianId:int}/available-ranchers")]
     public async Task<IActionResult> GetAvailableRanchers(int veterinarianId, CancellationToken cancellationToken)
     {
+        if (!IsCallerVeterinarian(veterinarianId, out var denied)) return denied!;
+
         var relationships = await queryService.Handle(
             new GetVeterinarianClientsByVeterinarianIdQuery(veterinarianId),
             cancellationToken);
-        var assignedRancherIds = relationships.Select(client => client.RancherId).ToHashSet();
+        // A rejected relationship does not block a new request.
+        var assignedRancherIds = relationships
+            .Where(client => !client.IsRejected)
+            .Select(client => client.RancherId)
+            .ToHashSet();
         var users = await userQueryService.Handle(new GetAllUsersQuery(), cancellationToken);
         var herds = await herdQueryService.Handle(new GetAllHerdsQuery(), cancellationToken);
         var animals = await animalQueryService.Handle(new GetAllAnimalsQuery(), cancellationToken);
@@ -80,6 +89,8 @@ public class VeterinarianClientsController(
     [HttpPost("{veterinarianId:int}/clients/{rancherId:int}")]
     public async Task<IActionResult> AddClient(int veterinarianId, int rancherId, CancellationToken cancellationToken)
     {
+        if (!IsCallerVeterinarian(veterinarianId, out var denied)) return denied!;
+
         var result = await commandService.Handle(
             new CreateVeterinarianClientCommand(veterinarianId, rancherId),
             cancellationToken);
@@ -92,6 +103,8 @@ public class VeterinarianClientsController(
     [HttpDelete("{veterinarianId:int}/clients/{rancherId:int}")]
     public async Task<IActionResult> RemoveClient(int veterinarianId, int rancherId, CancellationToken cancellationToken)
     {
+        if (!IsCallerVeterinarian(veterinarianId, out var denied)) return denied!;
+
         var result = await commandService.Handle(
             new DeleteVeterinarianClientCommand(veterinarianId, rancherId),
             cancellationToken);
@@ -99,6 +112,29 @@ public class VeterinarianClientsController(
         if (result.IsFailure) return NotFound();
 
         return NoContent();
+    }
+
+    /// <summary>
+    ///     The veterinarian in the route must be the authenticated veterinarian: nobody can read or change
+    ///     the client list of another veterinarian.
+    /// </summary>
+    private bool IsCallerVeterinarian(int veterinarianId, out IActionResult? denied)
+    {
+        var caller = HttpContext.GetCaller();
+        if (caller is null)
+        {
+            denied = Unauthorized();
+            return false;
+        }
+
+        if (!caller.IsVeterinarian || caller.Id != veterinarianId)
+        {
+            denied = StatusCode(StatusCodes.Status403Forbidden);
+            return false;
+        }
+
+        denied = null;
+        return true;
     }
 
     private static VeterinarianClientResource ToClientResource(
