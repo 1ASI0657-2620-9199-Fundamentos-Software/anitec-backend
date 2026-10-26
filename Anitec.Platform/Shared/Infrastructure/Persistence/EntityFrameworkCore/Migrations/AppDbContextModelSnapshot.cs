@@ -281,6 +281,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                     b.HasKey("Id")
                         .HasName("p_k_users");
 
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("i_x_users_username");
+
                     b.ToTable("users");
                 });
 
