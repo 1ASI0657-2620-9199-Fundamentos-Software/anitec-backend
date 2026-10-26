@@ -59,7 +59,11 @@ public class VeterinarianClientsController(
         var relationships = await queryService.Handle(
             new GetVeterinarianClientsByVeterinarianIdQuery(veterinarianId),
             cancellationToken);
-        var assignedRancherIds = relationships.Select(client => client.RancherId).ToHashSet();
+        // A rejected relationship does not block a new request.
+        var assignedRancherIds = relationships
+            .Where(client => !client.IsRejected)
+            .Select(client => client.RancherId)
+            .ToHashSet();
         var users = await userQueryService.Handle(new GetAllUsersQuery(), cancellationToken);
         var herds = await herdQueryService.Handle(new GetAllHerdsQuery(), cancellationToken);
         var animals = await animalQueryService.Handle(new GetAllAnimalsQuery(), cancellationToken);

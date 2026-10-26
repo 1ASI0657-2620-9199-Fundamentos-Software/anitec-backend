@@ -110,6 +110,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasColumnType("datetime(6)")
                         .HasColumnName("accepted_at");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("created_at");
+
                     b.Property<int>("RancherId")
                         .HasColumnType("int")
                         .HasColumnName("rancher_id");
@@ -123,6 +127,10 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasMaxLength(30)
                         .HasColumnType("varchar(30)")
                         .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("datetime")
+                        .HasColumnName("updated_at");
 
                     b.Property<int>("VeterinarianId")
                         .HasColumnType("int")
