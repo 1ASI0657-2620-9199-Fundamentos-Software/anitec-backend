@@ -10,6 +10,8 @@ using Anitec.Platform.Iam.Domain.Model.Aggregates;
 using Anitec.Platform.Iam.Domain.Repositories;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Livestock.Domain.Repositories;
+using Anitec.Platform.Metrics.Domain.Model.Entities;
+using Anitec.Platform.Metrics.Domain.Repositories;
 using Anitec.Platform.Sanitary.Domain.Model.Entities;
 using Anitec.Platform.Sanitary.Domain.Repositories;
 using Anitec.Platform.Shared.Domain.Repositories;
@@ -146,5 +148,14 @@ public class CountingUnitOfWork : IUnitOfWork
     {
         CompleteCalls++;
         return Task.CompletedTask;
+    }
+}
+
+public class InMemoryDeviceMetricRepository()
+    : InMemoryRepository<DeviceMetric>(m => m.Id, (m, id) => m.Id = id), IDeviceMetricRepository
+{
+    public Task<DeviceMetric?> FindLatestByDeviceIdAsync(int deviceId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Items.Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAt).FirstOrDefault());
     }
 }

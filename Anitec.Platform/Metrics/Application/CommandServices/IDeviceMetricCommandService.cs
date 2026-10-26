@@ -8,6 +8,7 @@ namespace Anitec.Platform.Metrics.Application.CommandServices;
 public interface IDeviceMetricCommandService
 {
     Task<Result<DeviceMetric>> Handle(CreateDeviceMetricCommand command, CancellationToken cancellationToken);
+    Task<Result<DeviceMetric>> Handle(IngestDeviceReadingCommand command, CancellationToken cancellationToken);
     Task<Result<DeviceMetric>> Handle(UpdateDeviceMetricCommand command, CancellationToken cancellationToken);
     Task<Result> Handle(DeleteDeviceMetricCommand command, CancellationToken cancellationToken);
 }

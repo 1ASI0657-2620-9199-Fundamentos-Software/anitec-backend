@@ -84,11 +84,9 @@ using Anitec.Platform.Subscriptions.Domain.Repositories;
 using Anitec.Platform.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Cortex.Mediator.Commands;
 using Cortex.Mediator.DependencyInjection;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.OpenApi;
-using System.Threading.RateLimiting;
 using ProblemDetailsFactory = Anitec.Platform.Shared.Interfaces.Rest.ProblemDetails.ProblemDetailsFactory;
 
 Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "animals"));
@@ -125,27 +123,6 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 
     if (builder.Environment.IsDevelopment())
         options.EnableSensitiveDataLogging();
-});
-
-// Telemetry: each device may send one reading per interval (Telemetry:MinIntervalSeconds, default 60 s).
-// It protects the limited compute of the free tier from a device stuck in a retry loop (QAS-11).
-var telemetryIntervalSeconds = builder.Configuration.GetValue("Telemetry:MinIntervalSeconds", 60);
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    // The window is per device and per key presented: a request with a wrong key falls in its own window,
-    // so it cannot use up the interval of the real device.
-    options.AddPolicy("telemetry", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            (httpContext.Request.RouteValues["deviceId"]?.ToString() ?? "unknown") + ":"
-            + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(httpContext.Request.Headers["X-Device-Api-Key"].ToString())))[..16],
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 1,
-                Window = TimeSpan.FromSeconds(telemetryIntervalSeconds),
-                QueueLimit = 0
-            }));
 });
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
@@ -303,7 +280,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 app.UseStaticFiles();
 
 app.UseCors("AllowedFrontends");
-app.UseRateLimiter();
 app.UseRequestAuthorization();
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
