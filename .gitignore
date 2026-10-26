@@ -36,3 +36,13 @@ _ReSharper.*/
 TestResults/
 msbuild.log
 msbuild.err
+
+## Archivos subidos por usuarios (almacenamiento local de desarrollo)
+Anitec.Platform/wwwroot/uploads/
+
+## Archivos generados por Reqnroll a partir de los .feature
+*.feature.cs
+Anitec.Platform.Tests/reports/
+
+## Variables de entorno locales (docker compose)
+.env
