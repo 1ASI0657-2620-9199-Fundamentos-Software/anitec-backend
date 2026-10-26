@@ -2,11 +2,11 @@ using Anitec.Platform.Devices.Application.QueryServices;
 using Anitec.Platform.Devices.Domain.Model.Entities;
 using Anitec.Platform.Devices.Domain.Model.Queries;
 using Anitec.Platform.Devices.Domain.Repositories;
-using Anitec.Platform.Iam.Application.Internal.OutboundServices;
+using Anitec.Platform.Devices.Application.Internal;
 
 namespace Anitec.Platform.Devices.Application.Internal.QueryServices;
 
-public class DeviceQueryService(IDeviceRepository repository, IHashingService hashingService) : IDeviceQueryService
+public class DeviceQueryService(IDeviceRepository repository) : IDeviceQueryService
 {
     public async Task<Device?> Handle(GetDeviceByIdQuery query, CancellationToken cancellationToken)
     {
@@ -25,7 +25,7 @@ public class DeviceQueryService(IDeviceRepository repository, IHashingService ha
         var device = await repository.FindByIdAsync(query.DeviceId, cancellationToken);
         if (device?.ApiKeyHash is null) return null;
 
-        return hashingService.VerifyPassword(query.ApiKey, device.ApiKeyHash) ? device : null;
+        return DeviceApiKeyHasher.Matches(query.ApiKey, device.ApiKeyHash) ? device : null;
     }
 }
 
