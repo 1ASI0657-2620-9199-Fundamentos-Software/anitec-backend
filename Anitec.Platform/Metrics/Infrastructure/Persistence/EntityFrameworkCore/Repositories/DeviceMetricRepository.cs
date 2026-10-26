@@ -10,7 +10,7 @@ public class DeviceMetricRepository(AppDbContext context) : BaseRepository<Devic
 {
     public async Task<DeviceMetric?> FindLatestByDeviceIdAsync(int deviceId, CancellationToken cancellationToken = default)
     {
-        return await context.Set<DeviceMetric>()
+        return await Context.Set<DeviceMetric>()
             .Where(metric => metric.DeviceId == deviceId)
             .OrderByDescending(metric => metric.RecordedAt)
             .FirstOrDefaultAsync(cancellationToken);
