@@ -90,7 +90,8 @@ public static class AppDbContextSeeder
             Client(veterinaria.Id, ganadero.Id),
             Client(veterinaria.Id, maria.Id),
             Client(vetPedro.Id, jose.Id),
-            Client(vetLucia.Id, rosa.Id)
+            Client(vetLucia.Id, rosa.Id),
+            Client(vetPedro.Id, maria.Id, "Pending")
         }, cancellationToken);
 
         await context.Set<HealthEvent>().AddRangeAsync(new[]
@@ -191,9 +192,10 @@ public static class AppDbContextSeeder
         return new Animal { Tag = tag, Name = name, Species = species, Breed = breed, Gender = gender, BirthDate = DateOnly.Parse(birthDate), Weight = weight, Status = status, HerdId = herdId };
     }
 
-    private static VeterinarianClient Client(int veterinarianId, int rancherId)
+    private static VeterinarianClient Client(int veterinarianId, int rancherId, string status = "Accepted")
     {
-        return new VeterinarianClient { VeterinarianId = veterinarianId, RancherId = rancherId, Status = "Accepted", RequestedAt = DateTime.UtcNow.AddDays(-20), AcceptedAt = DateTime.UtcNow.AddDays(-20) };
+        var accepted = status == "Accepted";
+        return new VeterinarianClient { VeterinarianId = veterinarianId, RancherId = rancherId, Status = status, RequestedAt = DateTime.UtcNow.AddDays(-20), AcceptedAt = accepted ? DateTime.UtcNow.AddDays(-20) : null };
     }
 
     private static HealthEvent Health(int animalId, string type, string date, string description, string veterinarian, string diagnosis, string treatment, string prescription, string followUp, string? nextDueDate)

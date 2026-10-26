@@ -15,6 +15,13 @@ public class VeterinarianClientQueryService(IVeterinarianClientRepository reposi
         return await repository.FindByVeterinarianIdAsync(query.VeterinarianId, cancellationToken);
     }
 
+    public async Task<IEnumerable<VeterinarianClient>> Handle(
+        GetVeterinarianRequestsByRancherIdQuery query,
+        CancellationToken cancellationToken)
+    {
+        return await repository.FindByRancherIdAsync(query.RancherId, cancellationToken);
+    }
+
     public async Task<IReadOnlySet<int>> Handle(
         GetAcceptedRancherIdsByVeterinarianIdQuery query,
         CancellationToken cancellationToken)
