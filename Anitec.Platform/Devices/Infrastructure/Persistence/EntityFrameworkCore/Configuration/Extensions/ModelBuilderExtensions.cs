@@ -14,6 +14,7 @@ public static class ModelBuilderExtensions
         builder.Entity<Device>().Property(d => d.Type).IsRequired().HasMaxLength(60);
         builder.Entity<Device>().Property(d => d.SerialNumber).IsRequired().HasMaxLength(80);
         builder.Entity<Device>().Property(d => d.Status).IsRequired().HasMaxLength(30);
+        builder.Entity<Device>().Property(d => d.ApiKeyHash).HasMaxLength(100);
         builder.Entity<Device>()
             .HasOne<Herd>()
             .WithMany()
