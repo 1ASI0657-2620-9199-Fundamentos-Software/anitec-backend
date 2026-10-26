@@ -3,13 +3,17 @@ using Anitec.Platform.Devices.Domain.Model.Commands;
 using Anitec.Platform.Devices.Domain.Model;
 using Anitec.Platform.Devices.Domain.Model.Entities;
 using Anitec.Platform.Devices.Domain.Repositories;
+using Anitec.Platform.Iam.Application.Internal.OutboundServices;
+using System.Security.Cryptography;
 using Anitec.Platform.Shared.Application.Model;
 using Anitec.Platform.Shared.Domain.Repositories;
 
 namespace Anitec.Platform.Devices.Application.Internal.CommandServices;
 
-public class DeviceCommandService(IDeviceRepository repository, IUnitOfWork unitOfWork)
-    : IDeviceCommandService
+public class DeviceCommandService(
+    IDeviceRepository repository,
+    IUnitOfWork unitOfWork,
+    IHashingService hashingService) : IDeviceCommandService
 {
     public async Task<Result<Device>> Handle(CreateDeviceCommand command, CancellationToken cancellationToken)
     {
@@ -33,6 +37,21 @@ public class DeviceCommandService(IDeviceRepository repository, IUnitOfWork unit
         repository.Update(entity);
         await unitOfWork.CompleteAsync(cancellationToken);
         return Result<Device>.Success(entity);
+    }
+
+    public async Task<Result<string>> Handle(IssueDeviceApiKeyCommand command, CancellationToken cancellationToken)
+    {
+        var entity = await repository.FindByIdAsync(command.DeviceId, cancellationToken);
+        if (entity is null) return Result<string>.Failure(DevicesError.DeviceNotFound, "Device not found.");
+
+        // 256 random bits; only the hash is stored, so the key is visible only in this response.
+        var apiKey = "ak_" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        entity.ApiKeyHash = hashingService.HashPassword(apiKey);
+
+        repository.Update(entity);
+        await unitOfWork.CompleteAsync(cancellationToken);
+        return Result<string>.Success(apiKey);
     }
 
     public async Task<Result> Handle(DeleteDeviceCommand command, CancellationToken cancellationToken)

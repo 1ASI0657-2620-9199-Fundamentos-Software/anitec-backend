@@ -157,6 +157,11 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasColumnType("int")
                         .HasColumnName("animal_id");
 
+                    b.Property<string>("ApiKeyHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("api_key_hash");
+
                     b.Property<int?>("HerdId")
                         .HasColumnType("int")
                         .HasColumnName("herd_id");

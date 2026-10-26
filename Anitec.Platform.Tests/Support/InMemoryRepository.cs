@@ -2,6 +2,8 @@ using Anitec.Platform.Activities.Domain.Model.Entities;
 using Anitec.Platform.Activities.Domain.Repositories;
 using Anitec.Platform.Clients.Domain.Model.Entities;
 using Anitec.Platform.Clients.Domain.Repositories;
+using Anitec.Platform.Devices.Domain.Model.Entities;
+using Anitec.Platform.Devices.Domain.Repositories;
 using Anitec.Platform.Financial.Domain.Model.Entities;
 using Anitec.Platform.Financial.Domain.Repositories;
 using Anitec.Platform.Iam.Domain.Model.Aggregates;
@@ -85,6 +87,9 @@ public class InMemoryHerdRepository()
         return herd;
     }
 }
+
+public class InMemoryDeviceRepository()
+    : InMemoryRepository<Device>(d => d.Id, (d, id) => d.Id = id), IDeviceRepository;
 
 public class InMemoryHealthEventRepository()
     : InMemoryRepository<HealthEvent>(e => e.Id, (e, id) => e.Id = id), IHealthEventRepository;

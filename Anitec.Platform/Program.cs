@@ -22,6 +22,7 @@ using Anitec.Platform.Devices.Application.Internal.QueryServices;
 using Anitec.Platform.Devices.Application.QueryServices;
 using Anitec.Platform.Devices.Domain.Repositories;
 using Anitec.Platform.Devices.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Devices.Infrastructure.Pipeline;
 using Anitec.Platform.Financial.Application.CommandServices;
 using Anitec.Platform.Financial.Application.Internal.CommandServices;
 using Anitec.Platform.Financial.Application.Internal.QueryServices;
@@ -83,9 +84,11 @@ using Anitec.Platform.Subscriptions.Domain.Repositories;
 using Anitec.Platform.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Cortex.Mediator.Commands;
 using Cortex.Mediator.DependencyInjection;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.OpenApi;
+using System.Threading.RateLimiting;
 using ProblemDetailsFactory = Anitec.Platform.Shared.Interfaces.Rest.ProblemDetails.ProblemDetailsFactory;
 
 Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "animals"));
@@ -121,6 +124,23 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 
     if (builder.Environment.IsDevelopment())
         options.EnableSensitiveDataLogging();
+});
+
+// Telemetry: each device may send one reading per interval (Telemetry:MinIntervalSeconds, default 60 s).
+// It protects the limited compute of the free tier from a device stuck in a retry loop (QAS-11).
+var telemetryIntervalSeconds = builder.Configuration.GetValue("Telemetry:MinIntervalSeconds", 60);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("telemetry", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Request.RouteValues["deviceId"]?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromSeconds(telemetryIntervalSeconds),
+                QueueLimit = 0
+            }));
 });
 
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
@@ -209,6 +229,7 @@ builder.Services.AddScoped<IVeterinarianClientQueryService, VeterinarianClientQu
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeviceCommandService, DeviceCommandService>();
 builder.Services.AddScoped<IDeviceQueryService, DeviceQueryService>();
+builder.Services.AddScoped<DeviceApiKeyFilter>();
 
 // Metrics Bounded Context
 builder.Services.AddScoped<IDeviceMetricRepository, DeviceMetricRepository>();
@@ -277,6 +298,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 app.UseStaticFiles();
 
 app.UseCors("AllowedFrontends");
+app.UseRateLimiter();
 app.UseRequestAuthorization();
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
