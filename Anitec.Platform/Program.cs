@@ -98,10 +98,13 @@ builder.Services.AddControllers(options => options.Conventions.Add(new KebabCase
 
 builder.Services.AddProblemDetails();
 
+// Only the frontends listed in Cors:AllowedOrigins may call the API from a browser.
+// Override them with environment variables such as Cors__AllowedOrigins__0.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAllPolicy",
-        policy => policy.AllowAnyOrigin()
+    options.AddPolicy("AllowedFrontends",
+        policy => policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader());
 });
@@ -273,7 +276,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 
 app.UseStaticFiles();
 
-app.UseCors("AllowAllPolicy");
+app.UseCors("AllowedFrontends");
 app.UseRequestAuthorization();
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
