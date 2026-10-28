@@ -1,5 +1,6 @@
 using System.Net.Mime;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Livestock.Application.CommandServices;
 using Anitec.Platform.Livestock.Application.QueryServices;
 using Anitec.Platform.Livestock.Domain.Model.Commands;
@@ -23,14 +24,20 @@ public class HerdsController(
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetAllHerdsQuery(), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetHerdsForCallerQuery(caller), cancellationToken);
         return Ok(result.Select(HerdResourceFromEntityAssembler.ToResourceFromEntity));
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetHerdByIdQuery(id), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetHerdByIdForCallerQuery(id, caller), cancellationToken);
         if (result is null) return NotFound();
         return Ok(HerdResourceFromEntityAssembler.ToResourceFromEntity(result));
     }
@@ -39,6 +46,10 @@ public class HerdsController(
     [HttpPost]
     public async Task<IActionResult> Create(CreateHerdResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (resource.OwnerId != caller.Id) return NotFound();
+
         if (string.IsNullOrWhiteSpace(resource.Name)) return BadRequest(new { message = "Herd name is required." });
         if (string.IsNullOrWhiteSpace(resource.Location)) return BadRequest(new { message = "Herd location is required." });
         if (string.IsNullOrWhiteSpace(resource.Owner)) return BadRequest(new { message = "Herd owner is required." });
@@ -56,6 +67,12 @@ public class HerdsController(
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CreateHerdResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (resource.OwnerId != caller.Id
+            || await queryService.Handle(new GetHerdByIdForCallerQuery(id, caller), cancellationToken) is null)
+            return NotFound();
+
         var command = UpdateHerdCommandFromResourceAssembler.ToCommandFromResource(id, resource);
         var result = await commandService.Handle(command, cancellationToken);
         if (result.IsFailure) return NotFound();
@@ -66,6 +83,11 @@ public class HerdsController(
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (await queryService.Handle(new GetHerdByIdForCallerQuery(id, caller), cancellationToken) is null)
+            return NotFound();
+
         var result = await commandService.Handle(new DeleteHerdCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
         return NoContent();
