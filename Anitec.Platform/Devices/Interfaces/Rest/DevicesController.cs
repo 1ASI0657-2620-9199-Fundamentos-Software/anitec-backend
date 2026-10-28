@@ -34,14 +34,20 @@ public class DevicesController(
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetAllDevicesQuery(), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetDevicesForCallerQuery(caller), cancellationToken);
         return Ok(result.Select(DeviceResourceFromEntityAssembler.ToResourceFromEntity));
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetDeviceByIdForCallerQuery(id, caller), cancellationToken);
         if (result is null) return NotFound();
         return Ok(DeviceResourceFromEntityAssembler.ToResourceFromEntity(result));
     }
@@ -50,6 +56,13 @@ public class DevicesController(
     [HttpPost]
     public async Task<IActionResult> Create(CreateDeviceResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (resource.HerdId is null && resource.AnimalId is null)
+            return BadRequest(new { message = "HerdId or AnimalId is required." });
+        if (!await IsTargetOwnedByCallerAsync(resource.HerdId, resource.AnimalId, caller, cancellationToken))
+            return NotFound();
+
         var command = CreateDeviceCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id },
@@ -60,6 +73,17 @@ public class DevicesController(
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CreateDeviceResource resource, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (resource.HerdId is null && resource.AnimalId is null)
+            return BadRequest(new { message = "HerdId or AnimalId is required." });
+
+        var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        if (device is null
+            || !await IsTargetOwnedByCallerAsync(device.HerdId, device.AnimalId, caller, cancellationToken)
+            || !await IsTargetOwnedByCallerAsync(resource.HerdId, resource.AnimalId, caller, cancellationToken))
+            return NotFound();
+
         var command = UpdateDeviceCommandFromResourceAssembler.ToCommandFromResource(id, resource);
         var result = await commandService.Handle(command, cancellationToken);
         if (result.IsFailure) return NotFound();
@@ -70,6 +94,14 @@ public class DevicesController(
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        if (device is null
+            || !await IsTargetOwnedByCallerAsync(device.HerdId, device.AnimalId, caller, cancellationToken))
+            return NotFound();
+
         var result = await commandService.Handle(new DeleteDeviceCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
         return NoContent();
@@ -87,7 +119,9 @@ public class DevicesController(
         if (caller is null) return Unauthorized();
 
         var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
-        if (device is null || !await IsOwnedByCallerAsync(device, caller, cancellationToken)) return NotFound();
+        if (device is null
+            || !await IsTargetOwnedByCallerAsync(device.HerdId, device.AnimalId, caller, cancellationToken))
+            return NotFound();
 
         var result = await commandService.Handle(new IssueDeviceApiKeyCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
@@ -99,10 +133,13 @@ public class DevicesController(
     [HttpGet("{id:int}/metrics")]
     public async Task<IActionResult> GetMetricsByDevice(int id, CancellationToken cancellationToken)
     {
-        var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var device = await queryService.Handle(new GetDeviceByIdForCallerQuery(id, caller), cancellationToken);
         if (device is null) return NotFound();
 
-        var metrics = await metricQueryService.Handle(new GetAllDeviceMetricsQuery(), cancellationToken);
+        var metrics = await metricQueryService.Handle(new GetDeviceMetricsForCallerQuery(caller), cancellationToken);
         return Ok(metrics
             .Where(metric => metric.DeviceId == id)
             .OrderByDescending(metric => metric.RecordedAt)
@@ -112,10 +149,13 @@ public class DevicesController(
     [HttpGet("{id:int}/latest-metric")]
     public async Task<IActionResult> GetLatestMetricByDevice(int id, CancellationToken cancellationToken)
     {
-        var device = await queryService.Handle(new GetDeviceByIdQuery(id), cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var device = await queryService.Handle(new GetDeviceByIdForCallerQuery(id, caller), cancellationToken);
         if (device is null) return NotFound();
 
-        var metrics = await metricQueryService.Handle(new GetAllDeviceMetricsQuery(), cancellationToken);
+        var metrics = await metricQueryService.Handle(new GetDeviceMetricsForCallerQuery(caller), cancellationToken);
         var latest = metrics
             .Where(metric => metric.DeviceId == id)
             .OrderByDescending(metric => metric.RecordedAt)
@@ -126,12 +166,16 @@ public class DevicesController(
         return Ok(DeviceMetricResourceFromEntityAssembler.ToResourceFromEntity(latest));
     }
 
-    private async Task<bool> IsOwnedByCallerAsync(Device device, CallerContext caller, CancellationToken cancellationToken)
+    /// <summary>
+    ///     A device is installed on a herd or on an animal; the rancher must own that target to create,
+    ///     change, delete or issue a key for the device.
+    /// </summary>
+    private async Task<bool> IsTargetOwnedByCallerAsync(int? herdId, int? animalId, CallerContext caller, CancellationToken cancellationToken)
     {
-        if (device.HerdId is { } herdId)
-            return await animalQueryService.Handle(new IsHerdOwnedByCallerQuery(herdId, caller), cancellationToken);
-        if (device.AnimalId is { } animalId)
-            return await animalQueryService.Handle(new AreAnimalsOwnedByCallerQuery([animalId], caller), cancellationToken);
+        if (herdId is { } herd)
+            return await animalQueryService.Handle(new IsHerdOwnedByCallerQuery(herd, caller), cancellationToken);
+        if (animalId is { } animal)
+            return await animalQueryService.Handle(new AreAnimalsOwnedByCallerQuery([animal], caller), cancellationToken);
         return false;
     }
 }
