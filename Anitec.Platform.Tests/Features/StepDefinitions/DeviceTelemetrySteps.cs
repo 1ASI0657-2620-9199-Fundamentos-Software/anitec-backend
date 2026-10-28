@@ -4,7 +4,9 @@ using Anitec.Platform.Devices.Domain.Model.Commands;
 using Anitec.Platform.Devices.Domain.Model.Entities;
 using Anitec.Platform.Devices.Domain.Model.Queries;
 using Anitec.Platform.Devices.Infrastructure.Pipeline;
+using Anitec.Platform.Livestock.Application.QueryServices;
 using Anitec.Platform.Shared.Application.Model;
+using NSubstitute;
 using Anitec.Platform.Tests.Support;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +36,7 @@ public class DeviceTelemetryWorld
 
     public DeviceQueryService CreateQueryService()
     {
-        return new DeviceQueryService(Devices);
+        return new DeviceQueryService(Devices, Substitute.For<IHerdQueryService>(), Substitute.For<IAnimalQueryService>());
     }
 }
 
