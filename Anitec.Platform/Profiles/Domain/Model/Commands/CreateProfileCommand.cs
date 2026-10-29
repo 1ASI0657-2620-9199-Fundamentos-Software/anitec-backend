@@ -27,6 +27,9 @@ namespace Anitec.Platform.Profiles.Domain.Model.Commands;
 /// <param name="Country">
 ///     The country of the profile.
 /// </param>
+/// <param name="OwnerId">
+///     The id of the user that creates the profile, when it is created through the API.
+/// </param>
 public record CreateProfileCommand(
     string FirstName,
     string LastName,
@@ -35,4 +38,5 @@ public record CreateProfileCommand(
     string Number,
     string City,
     string PostalCode,
-    string Country);
+    string Country,
+    int? OwnerId = null);

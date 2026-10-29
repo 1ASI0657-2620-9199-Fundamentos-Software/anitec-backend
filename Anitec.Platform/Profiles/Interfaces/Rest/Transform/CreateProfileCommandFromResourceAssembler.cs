@@ -20,8 +20,9 @@ public static class CreateProfileCommandFromResourceAssembler
     /// <returns>
     ///     A new <see cref="CreateProfileCommand" /> instance.
     /// </returns>
+    /// <param name="ownerId">The id of the user that creates the profile.</param>
     /// <exception cref="ArgumentNullException">Thrown if the input <paramref name="resource" /> is null.</exception>
-    public static CreateProfileCommand ToCommandFromResource(CreateProfileResource resource)
+    public static CreateProfileCommand ToCommandFromResource(CreateProfileResource resource, int? ownerId = null)
     {
         if (resource == null)
             throw new ArgumentNullException(nameof(resource),
@@ -34,7 +35,8 @@ public static class CreateProfileCommandFromResourceAssembler
             resource.Number,
             resource.City,
             resource.PostalCode,
-            resource.Country
+            resource.Country,
+            ownerId
         );
     }
 }

@@ -32,4 +32,28 @@ public class VeterinarianClientQueryService(IVeterinarianClientRepository reposi
             .Select(relationship => relationship.RancherId)
             .ToHashSet();
     }
+
+    public async Task<IReadOnlySet<int>> Handle(GetRelatedUserIdsQuery query, CancellationToken cancellationToken)
+    {
+        var caller = query.Caller;
+
+        if (caller.IsVeterinarian)
+        {
+            var asVeterinarian = await repository.FindByVeterinarianIdAsync(caller.Id, cancellationToken);
+            return asVeterinarian.Where(IsOpen).Select(relationship => relationship.RancherId).ToHashSet();
+        }
+
+        if (caller.IsRancher)
+        {
+            var asRancher = await repository.FindByRancherIdAsync(caller.Id, cancellationToken);
+            return asRancher.Where(IsOpen).Select(relationship => relationship.VeterinarianId).ToHashSet();
+        }
+
+        return new HashSet<int>();
+    }
+
+    private static bool IsOpen(VeterinarianClient relationship)
+    {
+        return !string.Equals(relationship.Status, VeterinarianClientStatus.Rejected, StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -25,7 +25,8 @@ public interface IUserQueryService
 
     /**
      * <summary>
-     *     Handle get all users query
+     *     Handle get all users query. It does not filter by caller, so it is reserved for internal
+     *     aggregations that apply their own rule; API endpoints must use <see cref="GetUsersForCallerQuery" />.
      * </summary>
      * <param name="query">The get all users query</param>
      * <param name="cancellationToken">The cancellation token</param>
@@ -42,7 +43,19 @@ public interface IUserQueryService
      * <returns>The user if found, null otherwise</returns>
      */
     Task<User?> Handle(GetUserByUsernameQuery query, CancellationToken cancellationToken);
+
+    /**
+     * <summary>
+     *     Handle get users for the caller: the caller itself and the users it has an open relationship with
+     * </summary>
+     */
+    Task<IEnumerable<User>> Handle(GetUsersForCallerQuery query, CancellationToken cancellationToken);
+
+    /**
+     * <summary>
+     *     Handle get user by id for the caller. It returns null when the user is neither the caller nor
+     *     related to it.
+     * </summary>
+     */
+    Task<User?> Handle(GetUserByIdForCallerQuery query, CancellationToken cancellationToken);
 }
-
-
-

@@ -30,7 +30,18 @@ public class ProfileQueryService(IProfileRepository profileRepository) : IProfil
     {
         return await profileRepository.FindByIdAsync(query.ProfileId, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<Profile>> Handle(GetProfilesForCallerQuery query, CancellationToken cancellationToken)
+    {
+        var profiles = await profileRepository.ListAsync(cancellationToken);
+        return profiles.Where(profile => profile.OwnerId == query.Caller.Id).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<Profile?> Handle(GetProfileByIdForCallerQuery query, CancellationToken cancellationToken)
+    {
+        var profile = await profileRepository.FindByIdAsync(query.ProfileId, cancellationToken);
+        return profile is not null && profile.OwnerId == query.Caller.Id ? profile : null;
+    }
 }
-
-
-
