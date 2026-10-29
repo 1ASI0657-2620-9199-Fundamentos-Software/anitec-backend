@@ -502,12 +502,19 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                         .HasColumnType("datetime")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("OwnerId")
+                        .HasColumnType("int")
+                        .HasColumnName("owner_id");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("datetime")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
                         .HasName("p_k_profiles");
+
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("i_x_profiles_owner_id");
 
                     b.ToTable("profiles");
                 });

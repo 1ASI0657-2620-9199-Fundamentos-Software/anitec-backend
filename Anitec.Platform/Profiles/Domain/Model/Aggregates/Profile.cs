@@ -32,9 +32,16 @@ public partial class Profile
         Name = new PersonName(command.FirstName, command.LastName);
         Email = new EmailAddress(command.Email);
         Address = new StreetAddress(command.Street, command.Number, command.City, command.PostalCode, command.Country);
+        OwnerId = command.OwnerId;
     }
 
     public int Id { get; }
+
+    /// <summary>
+    ///     Id of the user that created the profile. A profile without an owner is visible to nobody through the API.
+    /// </summary>
+    public int? OwnerId { get; private set; }
+
     public PersonName Name { get; }
     public EmailAddress Email { get; }
     public StreetAddress Address { get; }
