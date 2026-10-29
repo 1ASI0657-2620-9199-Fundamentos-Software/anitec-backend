@@ -11,6 +11,8 @@ public static class ModelBuilderExtensions
 
         builder.Entity<Profile>().HasKey(p => p.Id);
         builder.Entity<Profile>().Property(p => p.Id).IsRequired().ValueGeneratedOnAdd();
+        builder.Entity<Profile>().Property(p => p.OwnerId);
+        builder.Entity<Profile>().HasIndex(p => p.OwnerId);
         builder.Entity<Profile>().OwnsOne(p => p.Name,
             n =>
             {

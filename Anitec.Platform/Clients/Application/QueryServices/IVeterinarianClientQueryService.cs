@@ -16,4 +16,9 @@ public interface IVeterinarianClientQueryService
     ///     Gets the ids of the ranchers that explicitly approved the veterinarian (status Accepted).
     /// </summary>
     Task<IReadOnlySet<int>> Handle(GetAcceptedRancherIdsByVeterinarianIdQuery query, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     Gets the ids of the users that have a pending or accepted relationship with the caller.
+    /// </summary>
+    Task<IReadOnlySet<int>> Handle(GetRelatedUserIdsQuery query, CancellationToken cancellationToken);
 }

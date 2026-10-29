@@ -2,6 +2,7 @@ using System.Net.Mime;
 using Anitec.Platform.Iam.Application.QueryServices;
 using Anitec.Platform.Iam.Domain.Model.Queries;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Iam.Interfaces.Rest.Resources;
 using Anitec.Platform.Iam.Interfaces.Rest.Transform;
 using Anitec.Platform.Resources.Errors;
@@ -46,7 +47,10 @@ public class UsersController(
     [SwaggerResponse(StatusCodes.Status404NotFound, "The user was not found")]
     public async Task<IActionResult> GetUserById(int id, CancellationToken cancellationToken)
     {
-        var getUserByIdQuery = new GetUserByIdQuery(id);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var getUserByIdQuery = new GetUserByIdForCallerQuery(id, caller);
         var user = await userQueryService.Handle(getUserByIdQuery, cancellationToken);
 
         return IamActionResultAssembler.ToActionResultFromGetUserByIdResult(
@@ -60,7 +64,7 @@ public class UsersController(
 
     /**
      * <summary>
-     *     Get all users' endpoint. It allows getting all users
+     *     Get all users' endpoint. It returns the caller and the users it has an open relationship with
      * </summary>
      * <returns>The user resources</returns>
      */
@@ -72,8 +76,10 @@ public class UsersController(
     [SwaggerResponse(StatusCodes.Status200OK, "The users were found", typeof(IEnumerable<UserResource>))]
     public async Task<IActionResult> GetAllUsers(CancellationToken cancellationToken)
     {
-        var getAllUsersQuery = new GetAllUsersQuery();
-        var users = await userQueryService.Handle(getAllUsersQuery, cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var users = await userQueryService.Handle(new GetUsersForCallerQuery(caller), cancellationToken);
         var userResources = users.Select(UserResourceFromEntityAssembler.ToResourceFromEntity);
         return Ok(userResources);
     }

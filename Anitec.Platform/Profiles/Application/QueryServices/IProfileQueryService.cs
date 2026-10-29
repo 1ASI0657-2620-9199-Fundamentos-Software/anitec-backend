@@ -9,7 +9,8 @@ namespace Anitec.Platform.Profiles.Application.QueryServices;
 public interface IProfileQueryService
 {
     /// <summary>
-    ///     Handle get all profiles
+    ///     Handle get all profiles. It does not filter by caller, so it is reserved for internal use; API
+    ///     endpoints must use <see cref="GetProfilesForCallerQuery" />.
     /// </summary>
     /// <param name="query">
     ///     The <see cref="GetAllProfilesQuery" /> query
@@ -40,12 +41,13 @@ public interface IProfileQueryService
     /// </param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>
-    ///     <
-    ///         A
-    ///     <see cref="Profile" /> object or null
-    ///     /returns>
+    ///     A <see cref="Profile" /> object or null
+    /// </returns>
     Task<Profile?> Handle(GetProfileByIdQuery query, CancellationToken cancellationToken);
+
+    /// <summary>The profiles that the caller created.</summary>
+    Task<IEnumerable<Profile>> Handle(GetProfilesForCallerQuery query, CancellationToken cancellationToken);
+
+    /// <summary>A profile by id, or null when the caller did not create it.</summary>
+    Task<Profile?> Handle(GetProfileByIdForCallerQuery query, CancellationToken cancellationToken);
 }
-
-
-

@@ -5,6 +5,7 @@ using Anitec.Platform.Profiles.Domain.Model.Queries;
 using Anitec.Platform.Profiles.Interfaces.Rest.Resources;
 using Anitec.Platform.Profiles.Interfaces.Rest.Transform;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
+using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
 using Anitec.Platform.Resources.Errors;
 using Anitec.Platform.Shared.Interfaces.Rest.ProblemDetails;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +39,10 @@ public class ProfilesController(
     [SwaggerResponse(404, "The profile was not found.")]
     public async Task<IActionResult> GetProfileById(int profileId, CancellationToken cancellationToken)
     {
-        var getProfileByIdQuery = new GetProfileByIdQuery(profileId);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var getProfileByIdQuery = new GetProfileByIdForCallerQuery(profileId, caller);
         var profile = await profileQueryService.Handle(getProfileByIdQuery, cancellationToken);
 
         return ProfilesActionResultAssembler.ToActionResultFromGetProfileByIdResult(
@@ -56,7 +60,10 @@ public class ProfilesController(
     [SwaggerResponse(400, "The profile was not created.")]
     public async Task<IActionResult> CreateProfile(CreateProfileResource resource, CancellationToken cancellationToken)
     {
-        var createProfileCommand = CreateProfileCommandFromResourceAssembler.ToCommandFromResource(resource);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var createProfileCommand = CreateProfileCommandFromResourceAssembler.ToCommandFromResource(resource, caller.Id);
         var result = await profileCommandService.Handle(createProfileCommand, cancellationToken);
 
         return ProfilesActionResultAssembler.ToActionResultFromCreateProfileResult(
@@ -75,8 +82,10 @@ public class ProfilesController(
     [SwaggerResponse(404, "The profiles were not found.")]
     public async Task<IActionResult> GetAllProfiles(CancellationToken cancellationToken)
     {
-        var getAllProfilesQuery = new GetAllProfilesQuery();
-        var profiles = await profileQueryService.Handle(getAllProfilesQuery, cancellationToken);
+        var caller = HttpContext.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var profiles = await profileQueryService.Handle(new GetProfilesForCallerQuery(caller), cancellationToken);
         var profileResources = profiles.Select(ProfileResourceFromEntityAssembler.ToResourceFromEntity);
         return Ok(profileResources);
     }

@@ -11,6 +11,9 @@ using Anitec.Platform.Iam.Domain.Repositories;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Livestock.Domain.Repositories;
 using Anitec.Platform.Metrics.Domain.Model.Entities;
+using Anitec.Platform.Profiles.Domain.Model.Aggregates;
+using Anitec.Platform.Profiles.Domain.Model.ValueObjects;
+using Anitec.Platform.Profiles.Domain.Repositories;
 using Anitec.Platform.Metrics.Domain.Repositories;
 using Anitec.Platform.Sanitary.Domain.Model.Entities;
 using Anitec.Platform.Sanitary.Domain.Repositories;
@@ -157,5 +160,14 @@ public class InMemoryDeviceMetricRepository()
     public Task<DeviceMetric?> FindLatestByDeviceIdAsync(int deviceId, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(Items.Where(m => m.DeviceId == deviceId).OrderByDescending(m => m.RecordedAt).FirstOrDefault());
+    }
+}
+
+public class InMemoryProfileRepository()
+    : InMemoryRepository<Profile>(p => p.Id, (p, id) => p.WithId(id)), IProfileRepository
+{
+    public Task<Profile?> FindProfileByEmailAsync(EmailAddress email, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(Items.FirstOrDefault(p => p.Email == email));
     }
 }
