@@ -76,12 +76,6 @@ using Anitec.Platform.Shared.Infrastructure.Mediator.Cortex.Configuration;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Anitec.Platform.Shared.Infrastructure.Pipeline.Middleware.Extensions;
-using Anitec.Platform.Subscriptions.Application.CommandServices;
-using Anitec.Platform.Subscriptions.Application.Internal.CommandServices;
-using Anitec.Platform.Subscriptions.Application.Internal.QueryServices;
-using Anitec.Platform.Subscriptions.Application.QueryServices;
-using Anitec.Platform.Subscriptions.Domain.Repositories;
-using Anitec.Platform.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Cortex.Mediator.Commands;
 using Cortex.Mediator.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -141,7 +135,7 @@ builder.Services.AddSwaggerGen(options =>
         {
             Title = "AniTec Platform",
             Version = "v1",
-            Description = "Backend API for livestock, devices, metrics, activities, analytics and subscriptions.",
+            Description = "Backend API for livestock, devices, metrics, activities and analytics. Subscriptions and payments live in their own service behind the API gateway.",
             TermsOfService = new Uri("https://anitec.local/tos"),
             Contact = new OpenApiContact
             {
@@ -217,17 +211,6 @@ builder.Services.AddScoped<DeviceApiKeyFilter>();
 builder.Services.AddScoped<IDeviceMetricRepository, DeviceMetricRepository>();
 builder.Services.AddScoped<IDeviceMetricCommandService, DeviceMetricCommandService>();
 builder.Services.AddScoped<IDeviceMetricQueryService, DeviceMetricQueryService>();
-
-// Subscriptions Bounded Context
-builder.Services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
-builder.Services.AddScoped<ISubscriptionPlanCommandService, SubscriptionPlanCommandService>();
-builder.Services.AddScoped<ISubscriptionPlanQueryService, SubscriptionPlanQueryService>();
-builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
-builder.Services.AddScoped<ISubscriptionCommandService, SubscriptionCommandService>();
-builder.Services.AddScoped<ISubscriptionQueryService, SubscriptionQueryService>();
-builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-builder.Services.AddScoped<IPaymentCommandService, PaymentCommandService>();
-builder.Services.AddScoped<IPaymentQueryService, PaymentQueryService>();
 
 // Profiles Bounded Context
 builder.Services.AddScoped<IProfileRepository, ProfileRepository>();

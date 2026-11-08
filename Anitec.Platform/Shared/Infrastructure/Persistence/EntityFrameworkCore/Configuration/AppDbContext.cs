@@ -10,7 +10,6 @@ using Anitec.Platform.Profiles.Infrastructure.Persistence.EntityFrameworkCore.Co
 using Anitec.Platform.Sanitary.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Interceptors;
-using Anitec.Platform.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
@@ -53,7 +52,6 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         builder.ApplyClientsConfiguration();
         builder.ApplyDevicesConfiguration();
         builder.ApplyMetricsConfiguration();
-        builder.ApplySubscriptionsConfiguration();
 
         // Profiles Context
         builder.ApplyProfilesConfiguration();

@@ -8,7 +8,6 @@ using Anitec.Platform.Iam.Domain.Model.Aggregates;
 using Anitec.Platform.Livestock.Domain.Model.Entities;
 using Anitec.Platform.Metrics.Domain.Model.Entities;
 using Anitec.Platform.Sanitary.Domain.Model.Entities;
-using Anitec.Platform.Subscriptions.Domain.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
@@ -150,33 +149,6 @@ public static class AppDbContextSeeder
             Metric(devices[4].Id, "AirTemperature", 18.7m, "C", -1)
         }, cancellationToken);
 
-        var plans = new List<SubscriptionPlan>
-        {
-            new() { Name = "Ganadero Basico", Price = 49, StripePriceId = "mock_price_rancher_basic", MaxAnimals = 80, IsActive = true },
-            new() { Name = "Ganadero Pro", Price = 99, StripePriceId = "mock_price_rancher_pro", MaxAnimals = 250, IsActive = true },
-            new() { Name = "Veterinario Profesional", Price = 129, StripePriceId = "mock_price_vet_pro", MaxAnimals = 1000, IsActive = true }
-        };
-
-        await context.Set<SubscriptionPlan>().AddRangeAsync(plans, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-
-        var subscriptions = new List<Subscription>
-        {
-            Subscription(ganadero.Id, plans[1].Id, "mock_customer_1", "mock_subscription_1"),
-            Subscription(veterinaria.Id, plans[2].Id, "mock_customer_2", "mock_subscription_2"),
-            Subscription(maria.Id, plans[0].Id, "mock_customer_3", "mock_subscription_3")
-        };
-
-        await context.Set<Subscription>().AddRangeAsync(subscriptions, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-
-        await context.Set<Payment>().AddRangeAsync(new[]
-        {
-            Payment(ganadero.Id, subscriptions[0].Id, plans[1].Price, "mock_payment_1"),
-            Payment(veterinaria.Id, subscriptions[1].Id, plans[2].Price, "mock_payment_2"),
-            Payment(maria.Id, subscriptions[2].Id, plans[0].Price, "mock_payment_3")
-        }, cancellationToken);
-
         await context.Set<ReportMetric>().AddRangeAsync(new[]
         {
             new ReportMetric { Label = "Animales registrados", Value = animals.Count.ToString(), Trend = "Datos reales del backend" },
@@ -221,15 +193,5 @@ public static class AppDbContextSeeder
     private static DeviceMetric Metric(int deviceId, string type, decimal value, string unit, int hoursAgo)
     {
         return new DeviceMetric { DeviceId = deviceId, Type = type, Value = value, Unit = unit, RecordedAt = DateTime.UtcNow.AddHours(hoursAgo) };
-    }
-
-    private static Subscription Subscription(int userId, int planId, string customerId, string subscriptionId)
-    {
-        return new Subscription { UserId = userId, PlanId = planId, StripeCustomerId = customerId, StripeSubscriptionId = subscriptionId, Status = "Active", StartedAt = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1)), EndsAt = null };
-    }
-
-    private static Payment Payment(int userId, int subscriptionId, decimal amount, string paymentId)
-    {
-        return new Payment { UserId = userId, SubscriptionId = subscriptionId, Amount = amount, Currency = "PEN", Provider = "MockStripe", ProviderPaymentId = paymentId, Status = "Paid", PaidAt = DateTime.UtcNow.AddDays(-12) };
     }
 }
