@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>14</LangVersion>
+        <RootNamespace>Anitec.Gateway</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Reverse proxy of .NET: routes, clusters, load balancing and health checks come from configuration -->
+        <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+    </ItemGroup>
+
+</Project>
