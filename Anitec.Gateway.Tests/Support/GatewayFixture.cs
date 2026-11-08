@@ -22,6 +22,9 @@ public class GatewayFixture : IAsyncLifetime
     public FakeService Api2 { get; } = new("api2");
     public FakeService Subscriptions { get; } = new("subscriptions");
 
+    /// <summary>The fixture of the running collection; the Gherkin steps use it because they cannot receive it by constructor.</summary>
+    public static GatewayFixture Current { get; private set; } = null!;
+
     public HttpClient Client { get; private set; } = null!;
 
     public IServiceProvider Services => _factory!.Services;
@@ -49,6 +52,7 @@ public class GatewayFixture : IAsyncLifetime
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
         Client = _factory.CreateClient();
+        Current = this;
     }
 
     public async Task DisposeAsync()

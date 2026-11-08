@@ -43,6 +43,8 @@ Anitec.Platform/wwwroot/uploads/
 ## Archivos generados por Reqnroll a partir de los .feature
 *.feature.cs
 Anitec.Platform.Tests/reports/
+Anitec.Subscriptions.Tests/reports/
+Anitec.Gateway.Tests/reports/
 
 ## Variables de entorno locales (docker compose)
 .env
