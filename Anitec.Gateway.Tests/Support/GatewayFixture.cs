@@ -67,6 +67,9 @@ public class GatewayFixture : IAsyncLifetime
     /// <summary>Clears what the fakes recorded and makes sure the three of them are running and healthy.</summary>
     public async Task ResetAsync()
     {
+        Api1.ReportUnhealthy = false;
+        Api2.ReportUnhealthy = false;
+        Subscriptions.ReportUnhealthy = false;
         await Api1.StartAsync();
         await Api2.StartAsync();
         await Subscriptions.StartAsync();

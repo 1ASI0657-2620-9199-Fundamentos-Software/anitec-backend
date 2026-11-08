@@ -73,6 +73,19 @@ public class GatewaySteps(GatewayWorld world)
         await world.Fixture.Subscriptions.StopAsync();
     }
 
+    [Given("the Subscriptions service reports itself as unhealthy")]
+    public void GivenSubscriptionsReportsItselfUnhealthy()
+    {
+        world.Fixture.Subscriptions.ReportUnhealthy = true;
+    }
+
+    [Given(@"the gateway reports the service ""([^""]*)"" as ""([^""]*)""")]
+    public async Task GivenTheGatewayReportsAService(string service, string health)
+    {
+        await GatewayFixture.WaitUntilAsync(async () =>
+            (await world.Fixture.StatusAsync()).Contains((service, service, health)));
+    }
+
     [Given(@"the replica ""([^""]*)"" of the core stops")]
     public async Task GivenAReplicaStops(string name)
     {
@@ -107,6 +120,7 @@ public class GatewaySteps(GatewayWorld world)
     }
 
     [Given(@"a client sends GET ""([^""]*)"" once")]
+    [When(@"a client sends GET ""([^""]*)"" once")]
     public async Task GivenAClientSendsGetOnce(string path)
     {
         await world.GetAsync(path);

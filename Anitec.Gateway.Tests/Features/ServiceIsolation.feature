@@ -13,6 +13,14 @@ Feature: A failing service does not drag down the others
     Then every answer is a problem document that names the "subscriptions" service
     And 20 requests to "/api/v1/animals" are all answered with status 200
 
+  Scenario: A service that fails its health check receives no traffic and the caller gets the error at once
+    Given the Subscriptions service reports itself as unhealthy
+    And the gateway reports the service "subscriptions" as "Unhealthy"
+    When a client sends GET "/api/v1/subscription-plans" once
+    Then every answer is a problem document that names the "subscriptions" service
+    And the Subscriptions service received nothing
+    And 5 requests to "/api/v1/animals" are all answered with status 200
+
   Scenario: When Subscriptions comes back, its routes work again
     Given the Subscriptions service stops
     And a client sends GET "/api/v1/subscription-plans" once

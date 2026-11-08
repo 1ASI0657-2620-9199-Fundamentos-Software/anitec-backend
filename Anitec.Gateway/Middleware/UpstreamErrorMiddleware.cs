@@ -11,6 +11,9 @@ namespace Anitec.Gateway.Middleware;
 /// </summary>
 public class UpstreamErrorMiddleware(RequestDelegate next, ILogger<UpstreamErrorMiddleware> logger)
 {
+    /// <summary>Set in HttpContext.Items by the proxy pipeline when it refused to forward because no destination is healthy.</summary>
+    public const string NoHealthyDestinationKey = "gateway.no-healthy-destination";
+
     public async Task InvokeAsync(HttpContext context)
     {
         await next(context);
@@ -19,9 +22,10 @@ public class UpstreamErrorMiddleware(RequestDelegate next, ILogger<UpstreamError
 
         var proxy = context.Features.Get<IReverseProxyFeature>();
         var forwarderError = context.Features.Get<IForwarderErrorFeature>();
-        var noDestination = proxy is not null
-                            && proxy.AvailableDestinations.Count == 0
-                            && context.Response.StatusCode == StatusCodes.Status503ServiceUnavailable;
+        var noDestination = context.Items.ContainsKey(NoHealthyDestinationKey)
+                            || (proxy is not null
+                                && proxy.AvailableDestinations.Count == 0
+                                && context.Response.StatusCode == StatusCodes.Status503ServiceUnavailable);
         if (forwarderError is null && !noDestination) return;
 
         var status = context.Response.StatusCode is >= 500 and <= 599
