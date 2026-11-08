@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Anitec.Platform.Tests", "An
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Anitec.Subscriptions", "Anitec.Subscriptions\Anitec.Subscriptions.csproj", "{FADDCD7E-FDCC-40F1-A1D8-0977B0DFD2E4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Anitec.Subscriptions.Tests", "Anitec.Subscriptions.Tests\Anitec.Subscriptions.Tests.csproj", "{A4242FCE-8594-4CD8-82AC-EE1357612DA7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,18 @@ Global
 		{FADDCD7E-FDCC-40F1-A1D8-0977B0DFD2E4}.Release|x64.Build.0 = Release|Any CPU
 		{FADDCD7E-FDCC-40F1-A1D8-0977B0DFD2E4}.Release|x86.ActiveCfg = Release|Any CPU
 		{FADDCD7E-FDCC-40F1-A1D8-0977B0DFD2E4}.Release|x86.Build.0 = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|x64.Build.0 = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Debug|x86.Build.0 = Debug|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|x64.ActiveCfg = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|x64.Build.0 = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|x86.ActiveCfg = Release|Any CPU
+		{A4242FCE-8594-4CD8-82AC-EE1357612DA7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
