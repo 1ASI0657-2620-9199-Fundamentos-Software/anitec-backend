@@ -164,3 +164,14 @@ docker compose up --build
 - Stripe (modo de prueba): `STRIPE_SECRET_KEY` debe ser la clave secreta `sk_test_...` (no la publicable `pk_test_...`) y `STRIPE_WEBHOOK_SECRET` el `whsec_...` que imprime `stripe listen --print-secret`. Ambos pueden quedar vacios: el checkout responde entonces que Stripe no esta configurado. Para recibir el aviso de pago en local: `stripe listen --forward-to localhost:8080/api/v1/subscriptions/stripe/webhook`.
 - Los servicios del core y de suscripciones corren en `Development` (usuarios de demostracion con clave `anitec123`, endpoints auxiliares de suscripciones); solo para uso local.
 - Para detener un servicio y comprobar el aislamiento: `docker compose stop subscriptions` (el core sigue respondiendo) o `docker compose stop api1` / `gateway1` (el resto absorbe el trafico).
+
+## Integracion continua
+
+`.github/workflows/ci.yml` se ejecuta en cada push y pull request hacia `develop` y `main`:
+
+- **Build and test:** restaura, compila en Release y ejecuta las pruebas de la solucion (core, `Anitec.Subscriptions.Tests` y `Anitec.Gateway.Tests`). Levanta un MySQL desechable, sin contrasena y solo durante el job, y define `SUBSCRIPTIONS_TEST_MYSQL` para que tambien corran las pruebas de Subscriptions que necesitan una base real (migraciones, indices unicos, webhooks concurrentes). Sube los resultados `.trx` como artefacto.
+- **Build the Docker images:** construye las imagenes del core, de Subscriptions y del gateway, sin publicarlas.
+
+No usa secretos ni despliega nada. El despliegue a la nube se documenta aparte.
+
+Las pruebas se pueden ejecutar igual en local: `dotnet test anitec-platform.sln`. Sin `SUBSCRIPTIONS_TEST_MYSQL` la prueba de concurrencia sobre MySQL se omite; para incluirla: levantar un MySQL vacio y definir la variable con su cadena de conexion.
