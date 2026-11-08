@@ -77,15 +77,40 @@ if (app.Services.GetRequiredService<IOptions<GatewayOptions>>().Value.ExposeStat
         })
     }));
 
-app.MapReverseProxy();
+app.MapReverseProxy(pipeline =>
+{
+    // YARP sends the request to ALL the destinations when none of them is healthy. For a service that is known to be
+    // down that only makes each caller wait for a connection that cannot succeed: with Docker Compose the name of a
+    // stopped container stops resolving and each attempt took 4 to 7 s. The gateway answers right away instead; the
+    // active check brings the destination back when the service returns.
+    pipeline.Use((context, next) =>
+    {
+        var proxy = context.GetReverseProxyFeature();
+        if (proxy.AllDestinations.Count > 0 &&
+            proxy.AllDestinations.All(destination => IsUnhealthy(destination.Health)))
+        {
+            context.Items[UpstreamErrorMiddleware.NoHealthyDestinationKey] = true;
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return Task.CompletedTask;
+        }
+
+        return next();
+    });
+    pipeline.UseSessionAffinity();
+    pipeline.UseLoadBalancing();
+    pipeline.UsePassiveHealthChecks();
+});
 app.Run();
 
 // A destination receives traffic unless one of the checks marked it unhealthy.
+static bool IsUnhealthy(DestinationHealthState health)
+{
+    return health.Active == DestinationHealth.Unhealthy || health.Passive == DestinationHealth.Unhealthy;
+}
+
 static string EffectiveHealth(DestinationHealthState health)
 {
-    return health.Active == DestinationHealth.Unhealthy || health.Passive == DestinationHealth.Unhealthy
-        ? nameof(DestinationHealth.Unhealthy)
-        : nameof(DestinationHealth.Healthy);
+    return IsUnhealthy(health) ? nameof(DestinationHealth.Unhealthy) : nameof(DestinationHealth.Healthy);
 }
 
 // Makes the entry point visible to the integration tests.

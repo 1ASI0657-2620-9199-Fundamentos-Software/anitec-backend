@@ -163,6 +163,8 @@ docker compose up --build
 - La cabecera `X-Upstream` indica el gateway que atendio la peticion; `X-Correlation-Id` viaja hasta el servicio y vuelve en la respuesta.
 - Stripe (modo de prueba): `STRIPE_SECRET_KEY` debe ser la clave secreta `sk_test_...` (no la publicable `pk_test_...`) y `STRIPE_WEBHOOK_SECRET` el `whsec_...` que imprime `stripe listen --print-secret`. Ambos pueden quedar vacios: el checkout responde entonces que Stripe no esta configurado. Para recibir el aviso de pago en local: `stripe listen --forward-to localhost:8080/api/v1/subscriptions/stripe/webhook`.
 - Los servicios del core y de suscripciones corren en `Development` (usuarios de demostracion con clave `anitec123`, endpoints auxiliares de suscripciones); solo para uso local.
+- nginx resuelve los nombres de los gateways una sola vez, al arrancar. Si recreas un gateway (`docker compose up --force-recreate`, o `up --build` con cambios) su IP puede cambiar: reinicia el balanceador con `docker compose restart lb`. Reiniciar o detener un gateway (`stop`/`start`) no lo necesita.
+- Con un servicio caido, el gateway responde 503 de inmediato (problema JSON con el nombre del servicio) y el resto de las rutas sigue funcionando. Una vez que el gateway marca un destino como no sano deja de enviarle peticiones, y vuelve a usarlo cuando la comprobacion de salud lo ve sano.
 - Para detener un servicio y comprobar el aislamiento: `docker compose stop subscriptions` (el core sigue respondiendo) o `docker compose stop api1` / `gateway1` (el resto absorbe el trafico).
 
 ## Integracion continua

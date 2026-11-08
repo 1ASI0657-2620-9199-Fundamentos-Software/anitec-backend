@@ -37,6 +37,9 @@ public sealed class FakeService : IAsyncDisposable
 
     public bool IsRunning => _app is not null;
 
+    /// <summary>Makes /health answer 503 while the service keeps running, as a service that is up but not ready.</summary>
+    public bool ReportUnhealthy { get; set; }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
@@ -56,7 +59,9 @@ public sealed class FakeService : IAsyncDisposable
         builder.Logging.ClearProviders();
         var app = builder.Build();
 
-        app.MapGet("/health", () => Results.Text("Healthy"));
+        app.MapGet("/health", () => ReportUnhealthy
+            ? Results.Text("Unhealthy", statusCode: 503)
+            : Results.Text("Healthy"));
         app.Map("/{**path}", async (HttpContext context) =>
         {
             var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
