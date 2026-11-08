@@ -26,21 +26,30 @@ public class SubscriptionsController(
     IPaymentQueryService paymentQueryService,
     IConfiguration configuration) : ControllerBase
 {
+    // A user only sees its own subscriptions. The identity comes from the token, never from the request.
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var result = await queryService.Handle(new GetAllSubscriptionsQuery(), cancellationToken);
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var result = await queryService.Handle(new GetSubscriptionsByUserQuery(caller.Id), cancellationToken);
         return Ok(result.Select(SubscriptionResourceFromEntityAssembler.ToResourceFromEntity));
     }
 
+    // A subscription of another user answers 404, as if it did not exist (QAS-08).
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+
         var result = await queryService.Handle(new GetSubscriptionByIdQuery(id), cancellationToken);
-        if (result is null) return NotFound();
+        if (result is null || result.UserId != caller.Id) return NotFound();
         return Ok(SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(result));
     }
 
+    [DevelopmentOnly]
     [HttpPost]
     public async Task<IActionResult> Create(CreateSubscriptionResource resource, CancellationToken cancellationToken)
     {
@@ -53,13 +62,11 @@ public class SubscriptionsController(
     [HttpGet("users/{userId:int}/active")]
     public async Task<IActionResult> GetActiveByUser(int userId, CancellationToken cancellationToken)
     {
-        var subscriptions = await queryService.Handle(new GetAllSubscriptionsQuery(), cancellationToken);
-        var subscription = subscriptions
-            .Where(item => item.UserId == userId)
-            .Where(item => item.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(item => item.StartedAt)
-            .FirstOrDefault();
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (userId != caller.Id) return NotFound();
 
+        var subscription = await queryService.Handle(new GetActiveSubscriptionByUserQuery(caller.Id), cancellationToken);
         if (subscription is null) return NotFound();
 
         return Ok(SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(subscription));
@@ -68,17 +75,30 @@ public class SubscriptionsController(
     [HttpGet("users/{userId:int}/payments")]
     public async Task<IActionResult> GetPaymentsByUser(int userId, CancellationToken cancellationToken)
     {
-        var payments = await paymentQueryService.Handle(userId, cancellationToken);
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+        if (userId != caller.Id) return NotFound();
+
+        var payments = await paymentQueryService.Handle(caller.Id, cancellationToken);
         return Ok(payments.Select(PaymentResourceFromEntityAssembler.ToResourceFromEntity));
     }
 
+    // Demo data for Development only. The user comes from the token and the amount from the plan:
+    // nothing about who pays or how much is taken from the body.
+    [DevelopmentOnly]
     [HttpPost("mock-checkout")]
     public async Task<IActionResult> MockCheckout(MockCheckoutResource resource, CancellationToken cancellationToken)
     {
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var plan = await planQueryService.Handle(new GetSubscriptionPlanByIdQuery(resource.PlanId), cancellationToken);
+        if (plan is null || !plan.IsActive) return NotFound(new { message = "Subscription plan not found." });
+
         var subscriptionCommand = new CreateSubscriptionCommand(
-            resource.UserId,
-            resource.PlanId,
-            $"mock_customer_{resource.UserId}",
+            caller.Id,
+            plan.Id,
+            $"mock_customer_{caller.Id}",
             $"mock_subscription_{Guid.NewGuid():N}",
             "Active",
             DateOnly.FromDateTime(DateTime.UtcNow),
@@ -88,10 +108,10 @@ public class SubscriptionsController(
         if (subscriptionResult.IsFailure) return BadRequest(new { message = subscriptionResult.Message });
 
         var paymentCommand = new CreatePaymentCommand(
-            resource.UserId,
+            caller.Id,
             subscriptionResult.Value!.Id,
-            resource.Amount,
-            resource.Currency,
+            plan.Price,
+            "PEN",
             "MockStripe",
             $"mock_payment_{Guid.NewGuid():N}",
             "Paid",
@@ -177,6 +197,9 @@ public class SubscriptionsController(
         var existingPayment = await paymentQueryService.Handle(sessionId, cancellationToken);
         if (existingPayment is not null)
         {
+            // A session paid by another user answers 404 (QAS-08).
+            if (existingPayment.UserId != caller.Id) return NotFound();
+
             var existingSubscription = await queryService.Handle(
                 new GetSubscriptionByIdQuery(existingPayment.SubscriptionId),
                 cancellationToken);
@@ -203,7 +226,7 @@ public class SubscriptionsController(
         if (!session.Metadata.TryGetValue("userId", out var userIdValue) ||
             !int.TryParse(userIdValue, out var stripeUserId) ||
             stripeUserId != caller.Id)
-            return Forbid();
+            return NotFound();
 
         if (!session.Metadata.TryGetValue("planId", out var planIdValue) ||
             !int.TryParse(planIdValue, out var planId))
@@ -212,9 +235,8 @@ public class SubscriptionsController(
         var plan = await planQueryService.Handle(new GetSubscriptionPlanByIdQuery(planId), cancellationToken);
         if (plan is null) return NotFound(new { message = "Subscription plan not found." });
 
-        var subscriptions = await queryService.Handle(new GetAllSubscriptionsQuery(), cancellationToken);
+        var subscriptions = await queryService.Handle(new GetSubscriptionsByUserQuery(caller.Id), cancellationToken);
         var activeSubscriptions = subscriptions
-            .Where(item => item.UserId == caller.Id)
             .Where(item => item.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
 
         foreach (var subscription in activeSubscriptions)
@@ -264,6 +286,7 @@ public class SubscriptionsController(
             PaymentResourceFromEntityAssembler.ToResourceFromEntity(paymentResult.Value!)));
     }
 
+    [DevelopmentOnly]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CreateSubscriptionResource resource, CancellationToken cancellationToken)
     {
@@ -273,6 +296,7 @@ public class SubscriptionsController(
         return Ok(SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(result.Value!));
     }
 
+    [DevelopmentOnly]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {

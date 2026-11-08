@@ -16,8 +16,14 @@ public class SubscriptionQueryService(ISubscriptionRepository repository) : ISub
     {
         return await repository.ListAsync(cancellationToken);
     }
+
+    public async Task<IEnumerable<Subscription>> Handle(GetSubscriptionsByUserQuery query, CancellationToken cancellationToken)
+    {
+        return await repository.FindByUserIdAsync(query.UserId, cancellationToken);
+    }
+
+    public async Task<Subscription?> Handle(GetActiveSubscriptionByUserQuery query, CancellationToken cancellationToken)
+    {
+        return await repository.FindActiveByUserIdAsync(query.UserId, cancellationToken);
+    }
 }
-
-
-
-
