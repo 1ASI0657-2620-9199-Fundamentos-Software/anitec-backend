@@ -23,7 +23,7 @@ Backend ASP.NET Core para AniTec.
 - `Analytics`: metricas de reportes para dashboard.
 - `Devices`: balanzas, collares inteligentes, camaras termicas, aretes de identificacion, estaciones meteorologicas y sensores ambientales.
 - `Metrics`: lecturas generadas por los dispositivos.
-- `Subscriptions`: planes y suscripciones con campos preparados para Stripe.
+- Suscripciones y pagos ya no estan en este proyecto: viven en `Anitec.Subscriptions` (servicio con base propia y pagos con Stripe en modo de prueba). Los datos existentes se mueven con `scripts/subscriptions-cutover/`.
 
 ## Base de datos
 
