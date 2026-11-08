@@ -1,3 +1,4 @@
 namespace Anitec.Subscriptions.Interfaces.Rest.Resources;
 
-public record MockCheckoutResource(int UserId, int PlanId, decimal Amount, string Currency = "PEN");
+/// <summary>Development-only request: the buyer comes from the token and the amount from the plan.</summary>
+public record MockCheckoutResource(int PlanId);

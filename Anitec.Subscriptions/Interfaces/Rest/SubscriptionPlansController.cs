@@ -35,6 +35,7 @@ public class SubscriptionPlansController(
         return Ok(SubscriptionPlanResourceFromEntityAssembler.ToResourceFromEntity(result));
     }
 
+    [DevelopmentOnly]
     [HttpPost]
     public async Task<IActionResult> Create(CreateSubscriptionPlanResource resource, CancellationToken cancellationToken)
     {
@@ -44,6 +45,7 @@ public class SubscriptionPlansController(
             SubscriptionPlanResourceFromEntityAssembler.ToResourceFromEntity(result.Value));
     }
 
+    [DevelopmentOnly]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CreateSubscriptionPlanResource resource, CancellationToken cancellationToken)
     {
@@ -53,6 +55,7 @@ public class SubscriptionPlansController(
         return Ok(SubscriptionPlanResourceFromEntityAssembler.ToResourceFromEntity(result.Value!));
     }
 
+    [DevelopmentOnly]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
