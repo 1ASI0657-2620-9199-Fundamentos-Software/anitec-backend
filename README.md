@@ -142,16 +142,25 @@ cd C:\Users\melga\Desktop\TrabajoFinalAppWeb\anitec-backend
 dotnet build
 ```
 
-## Ejecucion local con Docker Compose (balanceador y dos replicas)
+## Ejecucion local con Docker Compose (balanceador, gateway y servicios)
 
-`docker-compose.yml` levanta MySQL 8.4, dos replicas de la API (`api1` y `api2`) y un balanceador nginx con round-robin. Las replicas no guardan sesion (JWT) y comparten la carpeta de imagenes subidas mediante un volumen.
+`docker-compose.yml` levanta MySQL 8.4, dos replicas de la API (`api1` y `api2`), el servicio de suscripciones (`subscriptions`, con su propia base `anitec-subscriptions` y su propio usuario de MySQL), dos replicas del API Gateway (`gateway1` y `gateway2`, YARP) y un balanceador nginx con round-robin:
+
+```
+navegador -> lb (nginx :8080) -> gateway1 / gateway2 -> /api/v1/subscription-plans/**, /api/v1/subscriptions/** -> subscriptions
+                                                     -> el resto (/api/v1/**, /uploads/**)                    -> api1 / api2
+```
+
+Las replicas y los gateways no guardan sesion (JWT); las replicas del core comparten la carpeta de imagenes subidas mediante un volumen. El servicio `db-init` crea la base y el usuario de suscripciones en cada arranque (es idempotente, tambien sirve con un volumen ya existente).
 
 ```bash
 cp .env.example .env        # ajusta los valores; .env no se versiona
 docker compose up --build
 ```
 
-- La API balanceada responde en `http://localhost:8080` (Swagger en `/swagger`, estado en `/health`).
-- La cabecera `X-Upstream` de cada respuesta indica la replica que atendio la peticion.
-- El entorno corre en `Development`, por lo que se cargan los usuarios de demostracion (clave `anitec123`).
-- Para detener una replica y comprobar la continuidad del servicio: `docker compose stop api1`.
+- Todo entra por `http://localhost:8080`. El frontend debe apuntar solo a esa direccion.
+- Estado de cada destino segun el gateway: `http://localhost:8080/gateway/status` (solo con `Gateway__ExposeStatus=true`, activo en este entorno).
+- La cabecera `X-Upstream` indica el gateway que atendio la peticion; `X-Correlation-Id` viaja hasta el servicio y vuelve en la respuesta.
+- Stripe (modo de prueba): `STRIPE_SECRET_KEY` debe ser la clave secreta `sk_test_...` (no la publicable `pk_test_...`) y `STRIPE_WEBHOOK_SECRET` el `whsec_...` que imprime `stripe listen --print-secret`. Ambos pueden quedar vacios: el checkout responde entonces que Stripe no esta configurado. Para recibir el aviso de pago en local: `stripe listen --forward-to localhost:8080/api/v1/subscriptions/stripe/webhook`.
+- Los servicios del core y de suscripciones corren en `Development` (usuarios de demostracion con clave `anitec123`, endpoints auxiliares de suscripciones); solo para uso local.
+- Para detener un servicio y comprobar el aislamiento: `docker compose stop subscriptions` (el core sigue respondiendo) o `docker compose stop api1` / `gateway1` (el resto absorbe el trafico).

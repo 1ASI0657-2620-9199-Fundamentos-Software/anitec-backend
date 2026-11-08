@@ -11,3 +11,7 @@ out/
 Anitec.Platform/wwwroot/uploads/
 Anitec.Platform.Tests/
 .env
+Anitec.Gateway/
+Anitec.Gateway.Tests/
+Anitec.Subscriptions/
+Anitec.Subscriptions.Tests/
