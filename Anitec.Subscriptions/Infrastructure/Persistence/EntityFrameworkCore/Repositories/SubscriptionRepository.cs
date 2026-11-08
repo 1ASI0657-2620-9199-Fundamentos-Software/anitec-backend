@@ -18,6 +18,14 @@ public class SubscriptionRepository(SubscriptionsDbContext context)
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<Subscription?> FindByStripeSubscriptionIdAsync(
+        string stripeSubscriptionId, CancellationToken cancellationToken)
+    {
+        return await Context.Set<Subscription>()
+            .FirstOrDefaultAsync(subscription => subscription.StripeSubscriptionId == stripeSubscriptionId,
+                cancellationToken);
+    }
+
     public async Task<Subscription?> FindActiveByUserIdAsync(int userId, CancellationToken cancellationToken)
     {
         return await Context.Set<Subscription>()
