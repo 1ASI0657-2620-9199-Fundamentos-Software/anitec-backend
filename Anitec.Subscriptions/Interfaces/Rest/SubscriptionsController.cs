@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using Anitec.Subscriptions.Application.CommandServices;
 using Anitec.Subscriptions.Application.QueryServices;
+using Anitec.Subscriptions.Domain.Model;
 using Anitec.Subscriptions.Domain.Model.Commands;
 using Anitec.Subscriptions.Domain.Model.Queries;
 using Anitec.Subscriptions.Interfaces.Rest.Resources;
@@ -8,12 +9,11 @@ using Anitec.Subscriptions.Interfaces.Rest.Transform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using Stripe;
-using Stripe.Checkout;
 
 namespace Anitec.Subscriptions.Interfaces.Rest;
 
 [Authorize(Roles = "Rancher,Veterinarian")]
+[PaymentGatewayExceptionFilter]
 [ApiController]
 [Route("api/v1/subscriptions")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -24,7 +24,7 @@ public class SubscriptionsController(
     ISubscriptionPlanQueryService planQueryService,
     IPaymentCommandService paymentCommandService,
     IPaymentQueryService paymentQueryService,
-    IConfiguration configuration) : ControllerBase
+    ICheckoutCommandService checkoutService) : ControllerBase
 {
     // A user only sees its own subscriptions. The identity comes from the token, never from the request.
     [HttpGet]
@@ -125,6 +125,7 @@ public class SubscriptionsController(
             PaymentResourceFromEntityAssembler.ToResourceFromEntity(paymentResult.Value!)));
     }
 
+    // The amount comes from the plan and the buyer from the token: the body only names the plan.
     [HttpPost("stripe-checkout")]
     public async Task<IActionResult> CreateStripeCheckout(
         StripeCheckoutResource resource,
@@ -133,157 +134,33 @@ public class SubscriptionsController(
         var caller = User.GetCaller();
         if (caller is null) return Unauthorized();
 
-        var plan = await planQueryService.Handle(new GetSubscriptionPlanByIdQuery(resource.PlanId), cancellationToken);
-        if (plan is null || !plan.IsActive) return NotFound(new { message = "Subscription plan not found." });
+        var result = await checkoutService.Handle(new StartCheckoutCommand(caller.Id, resource.PlanId),
+            cancellationToken);
+        if (result.IsFailure) return NotFound(new { message = result.Message });
 
-        var secretKey = configuration["StripeSettings:SecretKey"];
-        if (string.IsNullOrWhiteSpace(secretKey) || secretKey.Contains("change_me", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Stripe test secret key is not configured." });
-
-        var successUrl = configuration["StripeSettings:SuccessUrl"];
-        var cancelUrl = configuration["StripeSettings:CancelUrl"];
-        if (string.IsNullOrWhiteSpace(successUrl) || string.IsNullOrWhiteSpace(cancelUrl))
-            return BadRequest(new { message = "Stripe success and cancel URLs are not configured." });
-
-        StripeConfiguration.ApiKey = secretKey;
-
-        var unitAmount = (long)Math.Round(plan.Price * 100, MidpointRounding.AwayFromZero);
-        var options = new SessionCreateOptions
-        {
-            Mode = "subscription",
-            SuccessUrl = successUrl,
-            CancelUrl = cancelUrl,
-            ClientReferenceId = caller.Id.ToString(),
-            Metadata = new Dictionary<string, string>
-            {
-                ["userId"] = caller.Id.ToString(),
-                ["planId"] = plan.Id.ToString()
-            },
-            LineItems =
-            [
-                new SessionLineItemOptions
-                {
-                    Quantity = 1,
-                    PriceData = new SessionLineItemPriceDataOptions
-                    {
-                        Currency = "pen",
-                        UnitAmount = unitAmount,
-                        Recurring = new SessionLineItemPriceDataRecurringOptions
-                        {
-                            Interval = "month"
-                        },
-                        ProductData = new SessionLineItemPriceDataProductDataOptions
-                        {
-                            Name = plan.Name,
-                            Description = $"AniTec subscription plan for up to {plan.MaxAnimals} animals"
-                        }
-                    }
-                }
-            ]
-        };
-
-        var service = new SessionService();
-        var session = await service.CreateAsync(options, cancellationToken: cancellationToken);
-
-        return Ok(new StripeCheckoutSessionResource(session.Id, session.Url));
+        return Ok(new StripeCheckoutSessionResource(result.Value!.Id, result.Value.Url));
     }
 
+    // Fallback of the success page. The webhook is the main way a payment is recorded; this endpoint stores the
+    // session when the webhook has not arrived yet and returns what is already stored otherwise.
     [HttpGet("stripe-checkout/{sessionId}/confirm")]
     public async Task<IActionResult> ConfirmStripeCheckout(string sessionId, CancellationToken cancellationToken)
     {
         var caller = User.GetCaller();
         if (caller is null) return Unauthorized();
 
-        var existingPayment = await paymentQueryService.Handle(sessionId, cancellationToken);
-        if (existingPayment is not null)
-        {
-            // A session paid by another user answers 404 (QAS-08).
-            if (existingPayment.UserId != caller.Id) return NotFound();
-
-            var existingSubscription = await queryService.Handle(
-                new GetSubscriptionByIdQuery(existingPayment.SubscriptionId),
-                cancellationToken);
-
-            if (existingSubscription is null) return NotFound();
-
-            return Ok(new StripeCheckoutResultResource(
-                SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(existingSubscription),
-                PaymentResourceFromEntityAssembler.ToResourceFromEntity(existingPayment)));
-        }
-
-        var secretKey = configuration["StripeSettings:SecretKey"];
-        if (string.IsNullOrWhiteSpace(secretKey) || secretKey.Contains("change_me", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Stripe test secret key is not configured." });
-
-        StripeConfiguration.ApiKey = secretKey;
-        var service = new SessionService();
-        var session = await service.GetAsync(sessionId, cancellationToken: cancellationToken);
-
-        if (!session.Status.Equals("complete", StringComparison.OrdinalIgnoreCase) &&
-            !session.PaymentStatus.Equals("paid", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Stripe checkout session is not completed." });
-
-        if (!session.Metadata.TryGetValue("userId", out var userIdValue) ||
-            !int.TryParse(userIdValue, out var stripeUserId) ||
-            stripeUserId != caller.Id)
-            return NotFound();
-
-        if (!session.Metadata.TryGetValue("planId", out var planIdValue) ||
-            !int.TryParse(planIdValue, out var planId))
-            return BadRequest(new { message = "Stripe checkout metadata is incomplete." });
-
-        var plan = await planQueryService.Handle(new GetSubscriptionPlanByIdQuery(planId), cancellationToken);
-        if (plan is null) return NotFound(new { message = "Subscription plan not found." });
-
-        var subscriptions = await queryService.Handle(new GetSubscriptionsByUserQuery(caller.Id), cancellationToken);
-        var activeSubscriptions = subscriptions
-            .Where(item => item.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
-
-        foreach (var subscription in activeSubscriptions)
-        {
-            var updateCommand = new UpdateSubscriptionCommand(
-                subscription.Id,
-                subscription.UserId,
-                subscription.PlanId,
-                subscription.StripeCustomerId,
-                subscription.StripeSubscriptionId,
-                "Inactive",
-                subscription.StartedAt,
-                DateOnly.FromDateTime(DateTime.UtcNow));
-
-            await commandService.Handle(updateCommand, cancellationToken);
-        }
-
-        var stripeCustomerId = session.CustomerId ?? string.Empty;
-        var stripeSubscriptionId = session.SubscriptionId ?? session.Id;
-        var subscriptionCommand = new CreateSubscriptionCommand(
-            caller.Id,
-            plan.Id,
-            stripeCustomerId,
-            stripeSubscriptionId,
-            "Active",
-            DateOnly.FromDateTime(DateTime.UtcNow),
-            null);
-
-        var subscriptionResult = await commandService.Handle(subscriptionCommand, cancellationToken);
-        if (subscriptionResult.IsFailure) return BadRequest(new { message = subscriptionResult.Message });
-
-        var paymentCommand = new CreatePaymentCommand(
-            caller.Id,
-            subscriptionResult.Value!.Id,
-            plan.Price,
-            "PEN",
-            "StripeTest",
-            session.Id,
-            "Paid",
-            DateTime.UtcNow);
-
-        var paymentResult = await paymentCommandService.Handle(paymentCommand, cancellationToken);
-        if (paymentResult.IsFailure) return BadRequest(new { message = paymentResult.Message });
+        var result = await checkoutService.Handle(new ConfirmCheckoutCommand(caller.Id, sessionId), cancellationToken);
+        if (result.IsFailure)
+            return result.Error switch
+            {
+                SubscriptionsError.CheckoutNotPaid or SubscriptionsError.CheckoutMetadataIncomplete =>
+                    BadRequest(new { message = result.Message }),
+                _ => NotFound(new { message = result.Message })
+            };
 
         return Ok(new StripeCheckoutResultResource(
-            SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(subscriptionResult.Value),
-            PaymentResourceFromEntityAssembler.ToResourceFromEntity(paymentResult.Value!)));
+            SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(result.Value!.Subscription),
+            PaymentResourceFromEntityAssembler.ToResourceFromEntity(result.Value.Payment)));
     }
 
     [DevelopmentOnly]

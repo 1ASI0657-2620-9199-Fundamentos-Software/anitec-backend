@@ -10,4 +10,7 @@ public interface ISubscriptionRepository : IBaseRepository<Subscription>
 
     /// <summary>Finds the newest subscription of one user whose status is Active.</summary>
     Task<Subscription?> FindActiveByUserIdAsync(int userId, CancellationToken cancellationToken);
+
+    /// <summary>Finds the subscription created for a provider subscription id (or checkout session id).</summary>
+    Task<Subscription?> FindByStripeSubscriptionIdAsync(string stripeSubscriptionId, CancellationToken cancellationToken);
 }

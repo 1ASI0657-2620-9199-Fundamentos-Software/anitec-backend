@@ -70,6 +70,10 @@ namespace Anitec.Subscriptions.Shared.Infrastructure.Persistence.EntityFramework
                     b.HasKey("Id")
                         .HasName("p_k_payments");
 
+                    b.HasIndex("ProviderPaymentId")
+                        .IsUnique()
+                        .HasDatabaseName("i_x_payments_provider_payment_id");
+
                     b.HasIndex("SubscriptionId")
                         .HasDatabaseName("i_x_payments_subscription_id");
 
@@ -122,6 +126,10 @@ namespace Anitec.Subscriptions.Shared.Infrastructure.Persistence.EntityFramework
 
                     b.HasIndex("PlanId")
                         .HasDatabaseName("i_x_subscriptions_plan_id");
+
+                    b.HasIndex("StripeSubscriptionId")
+                        .IsUnique()
+                        .HasDatabaseName("i_x_subscriptions_stripe_subscription_id");
 
                     b.ToTable("subscriptions");
                 });

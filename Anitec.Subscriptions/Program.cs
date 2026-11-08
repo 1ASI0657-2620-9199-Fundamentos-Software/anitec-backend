@@ -2,9 +2,11 @@ using System.Security.Claims;
 using System.Text;
 using Anitec.Subscriptions.Application.CommandServices;
 using Anitec.Subscriptions.Application.Internal.CommandServices;
+using Anitec.Subscriptions.Application.Internal.OutboundServices;
 using Anitec.Subscriptions.Application.Internal.QueryServices;
 using Anitec.Subscriptions.Application.QueryServices;
 using Anitec.Subscriptions.Domain.Repositories;
+using Anitec.Subscriptions.Infrastructure.Payments.Stripe;
 using Anitec.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Anitec.Subscriptions.Shared.Domain.Repositories;
 using Anitec.Subscriptions.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
@@ -116,6 +118,13 @@ builder.Services.AddScoped<ISubscriptionQueryService, SubscriptionQueryService>(
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentCommandService, PaymentCommandService>();
 builder.Services.AddScoped<IPaymentQueryService, PaymentQueryService>();
+
+// Stripe: the keys and URLs come from StripeSettings__* variables. The gateway is a singleton that keeps its own
+// StripeClient; the checkout service depends only on the IPaymentGateway contract.
+builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IPaymentGateway, StripePaymentGateway>();
+builder.Services.AddScoped<ICheckoutCommandService, CheckoutCommandService>();
 
 var app = builder.Build();
 

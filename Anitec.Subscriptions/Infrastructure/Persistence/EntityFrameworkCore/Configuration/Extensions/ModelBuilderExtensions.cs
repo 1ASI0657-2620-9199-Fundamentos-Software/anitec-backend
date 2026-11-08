@@ -48,6 +48,11 @@ public static class ModelBuilderExtensions
         builder.Entity<Payment>().Property(p => p.Provider).IsRequired().HasMaxLength(40);
         builder.Entity<Payment>().Property(p => p.ProviderPaymentId).IsRequired().HasMaxLength(120);
         builder.Entity<Payment>().Property(p => p.Status).IsRequired().HasMaxLength(40);
+        // Idempotency of the checkout: a session is stored once as a payment and once as a subscription,
+        // even if the webhook and the confirm endpoint arrive at the same time.
+        builder.Entity<Payment>().HasIndex(p => p.ProviderPaymentId).IsUnique();
+        builder.Entity<Subscription>().HasIndex(s => s.StripeSubscriptionId).IsUnique();
+
         builder.Entity<Payment>()
             .HasOne<Subscription>()
             .WithMany()
