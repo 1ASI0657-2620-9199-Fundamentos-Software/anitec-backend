@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>14</LangVersion>
+        <RootNamespace>Anitec.Subscriptions</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- EntityFrameworkCore with MySQL, the same provider as the core -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.7" />
+        <!-- Snake case table and column names, as in the core -->
+        <PackageReference Include="Humanizer" Version="3.0.10" />
+        <!-- Stripe -->
+        <PackageReference Include="Stripe.net" Version="52.1.0" />
+        <!-- JWT validation: the service only checks the signature of the token issued by the core -->
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+        <!-- OpenAPI documentation -->
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.0" />
+    </ItemGroup>
+
+</Project>
