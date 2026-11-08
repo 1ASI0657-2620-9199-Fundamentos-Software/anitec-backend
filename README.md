@@ -167,6 +167,21 @@ docker compose up --build
 - Con un servicio caido, el gateway responde 503 de inmediato (problema JSON con el nombre del servicio) y el resto de las rutas sigue funcionando. Una vez que el gateway marca un destino como no sano deja de enviarle peticiones, y vuelve a usarlo cuando la comprobacion de salud lo ve sano.
 - Para detener un servicio y comprobar el aislamiento: `docker compose stop subscriptions` (el core sigue respondiendo) o `docker compose stop api1` / `gateway1` (el resto absorbe el trafico).
 
+### Verificacion del stack completo
+
+`scripts/verification/verify_stack.py` (solo Python estandar y la CLI de `docker`) comprueba el stack levantado con Compose a traves del balanceador. No lee `.env`.
+
+```bash
+python scripts/verification/verify_stack.py base                      # rutas, contrato del gateway, propiedad, webhook sin firma valida
+python scripts/verification/verify_stack.py isolation replicas        # detiene y vuelve a levantar contenedores
+python scripts/verification/verify_stack.py all --report resultado.json
+```
+
+- `base` no cambia nada y se puede repetir.
+- `isolation` detiene `subscriptions`, comprueba que el core y `/health` siguen respondiendo 200 y que las rutas de suscripciones dan un error controlado con el nombre del servicio, y mide la recuperacion al volver.
+- `replicas` detiene `api1` y despues `gateway1` y mide lo que ve un cliente: peticiones fallidas, latencias y tiempo hasta volver a la rotacion. Con una replica del core caida hay unas pocas respuestas 502 (en las mediciones fueron 2 y 3 de 150) hasta que el gateway la marca como no sana: el gateway no reintenta una peticion en otra replica.
+- Tras un fallo de conexion nginx deja fuera a un gateway durante su `fail_timeout` (10 s por defecto); por eso `gateway1` tarda unos segundos en volver a recibir trafico.
+
 ## Integracion continua
 
 `.github/workflows/ci.yml` se ejecuta en cada push y pull request hacia `develop` y `main`:
