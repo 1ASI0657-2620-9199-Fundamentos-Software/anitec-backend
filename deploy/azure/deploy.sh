@@ -19,6 +19,7 @@ cd "$(dirname "$0")/../.."          # anitec-backend
 
 SECRETS=deploy/azure/.secrets.env
 LOCATION=${LOCATION:-eastus2}        # one of the regions allowed by the subscription policy
+MYSQL_LOCATION=${MYSQL_LOCATION:-mexicocentral}   # eastus2 has no MySQL Flexible Server SKUs for this subscription
 RG=${RG:-rg-anitec-sprint3}
 LAW=log-anitec-sprint3
 CAE=cae-anitec-sprint3
@@ -67,7 +68,7 @@ cmd_infra() {
   log "MySQL flexible server $MYSQL (Burstable B1ms, MySQL 8.4, 20 GB, no high availability)"
   ensure MYSQL_ADMIN_PASSWORD "$(gen_password)"
   ensure SUBSCRIPTIONS_DB_PASSWORD "$(gen_password)"
-  az mysql flexible-server create -g "$RG" -n "$MYSQL" -l "$LOCATION" --tier Burstable --sku-name Standard_B1ms \
+  az mysql flexible-server create -g "$RG" -n "$MYSQL" -l "$MYSQL_LOCATION" --tier Burstable --sku-name Standard_B1ms \
     --storage-size 20 --version 8.4 --admin-user "$MYSQL_ADMIN" --admin-password "$(val MYSQL_ADMIN_PASSWORD)" \
     --public-access 0.0.0.0 --high-availability Disabled --backup-retention 7 -y -o none
   az mysql flexible-server show -g "$RG" -n "$MYSQL" --query "{name:name,state:state,version:version,sku:sku.name,fqdn:fullyQualifiedDomainName}" -o table
