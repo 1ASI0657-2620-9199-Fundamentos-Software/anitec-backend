@@ -36,8 +36,10 @@ public class StripeWebhookController(
         {
             webhookEvent = paymentGateway.ParseWebhook(payload, Request.Headers["Stripe-Signature"].FirstOrDefault());
         }
-        catch (InvalidWebhookSignatureException)
+        catch (InvalidWebhookSignatureException exception)
         {
+            // Only the reason is logged: never the secret, the header or the body.
+            logger.LogWarning("Stripe webhook rejected: {Reason}", exception.InnerException?.Message ?? exception.Message);
             return BadRequest(new { message = "Invalid webhook signature." });
         }
 

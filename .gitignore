@@ -48,3 +48,6 @@ Anitec.Gateway.Tests/reports/
 
 ## Variables de entorno locales (docker compose)
 .env
+
+# Azure deployment secrets (local only)
+deploy/azure/.secrets.env
