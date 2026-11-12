@@ -7,6 +7,7 @@
 #   deploy/azure/deploy.sh database    creates the Subscriptions database and its own user on the Azure MySQL server
 #   deploy/azure/deploy.sh apps        creates or updates the three Container Apps (core, subscriptions, gateway)
 #   deploy/azure/deploy.sh webhook     loads STRIPE_WEBHOOK_SECRET_AZURE into the Subscriptions app
+#   deploy/azure/deploy.sh frontend-url   points the Stripe return pages to FRONTEND_URL (the published frontend)
 #   deploy/azure/deploy.sh status      shows the gateway URL, the state of each app and the health of the system
 #   deploy/azure/deploy.sh myip-open|myip-close   opens or closes the MySQL firewall for this computer
 #   deploy/azure/deploy.sh destroy yes-delete-<resource group>   deletes EVERYTHING in the resource group
@@ -172,6 +173,16 @@ cmd_webhook() {
   echo "Webhook secret loaded; a new revision of ca-subscriptions is starting."
 }
 
+cmd_frontend_url() {
+  # Points the Stripe return pages of the Subscriptions service to the frontend that is published.
+  # Usage: FRONTEND_URL=https://frontend.example bash deploy/azure/deploy.sh frontend-url
+  case "$FRONTEND_URL" in https://*|http://localhost*) ;; *) echo "Set FRONTEND_URL to the address of the frontend (https://... or http://localhost:5173)." >&2; exit 1 ;; esac
+  FRONTEND_URL=${FRONTEND_URL%/}
+  log "Stripe return pages of ca-subscriptions -> $FRONTEND_URL"
+  az containerapp update -g "$RG" -n ca-subscriptions --set-env-vars     "StripeSettings__SuccessUrl=$FRONTEND_URL/subscriptions/success?session_id={CHECKOUT_SESSION_ID}"     "StripeSettings__CancelUrl=$FRONTEND_URL/subscriptions/cancel" -o none
+  echo "Done. The gateway allows the origins of Anitec.Gateway/appsettings.json (Cors:AllowedOrigins); add any other frontend there."
+}
+
 cmd_status() {
   az containerapp list -g "$RG" --query "[].{app:name,state:properties.runningStatus,ingress:properties.configuration.ingress.external,minReplicas:properties.template.scale.minReplicas}" -o table
   local gw; gw=$(app_fqdn ca-gateway || true)
@@ -189,7 +200,7 @@ cmd_destroy() {
 
 case "${1:-}" in
   smoke) cmd_smoke ;; infra) cmd_infra ;; images) cmd_images ;; database) cmd_database ;; apps) cmd_apps ;;
-  webhook) cmd_webhook ;; status) cmd_status ;; myip-open) cmd_myip_open ;; myip-close) cmd_myip_close ;;
+  webhook) cmd_webhook ;; frontend-url) cmd_frontend_url ;; status) cmd_status ;; myip-open) cmd_myip_open ;; myip-close) cmd_myip_close ;;
   destroy) shift; cmd_destroy "$@" ;;
   *) sed -n '2,17p' "$0"; exit 1 ;;
 esac
