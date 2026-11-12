@@ -1,0 +1,89 @@
+# Continuous integration of the backend: build, tests of the three projects and build of the three Docker images.
+#
+# It needs no secrets: the tests use fakes (payment gateway, upstream servers) and a throwaway MySQL service
+# container that exists only while the job runs. Nothing is published and nothing is deployed from here.
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Throwaway database for the Subscriptions tests that need a real MySQL (migrations, unique indexes and
+    # concurrent webhooks). It is created empty, has no password and is not reachable from outside the job.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: anitec-subscriptions-ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore anitec-platform.sln
+
+      - name: Build
+        run: dotnet build anitec-platform.sln --configuration Release --no-restore
+
+      - name: Test (core, Subscriptions and gateway)
+        env:
+          SUBSCRIPTIONS_TEST_MYSQL: "server=127.0.0.1;port=3306;user=root;database=anitec-subscriptions-ci;SslMode=Disabled;AllowPublicKeyRetrieval=True"
+        run: >-
+          dotnet test anitec-platform.sln --configuration Release --no-build
+          --logger "trx;LogFilePrefix=results" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+
+  docker:
+    name: Build the Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Each service has its own build context, as in docker-compose.yml. The images are not pushed anywhere.
+      - name: Core API
+        run: docker build --tag anitec-api:ci .
+
+      - name: Subscriptions service
+        run: docker build --tag anitec-subscriptions:ci Anitec.Subscriptions
+
+      - name: API gateway
+        run: docker build --tag anitec-gateway:ci Anitec.Gateway

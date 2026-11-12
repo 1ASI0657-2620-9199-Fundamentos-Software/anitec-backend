@@ -1,0 +1,2 @@
+# Shell scripts run in Linux containers and Git Bash: they must keep LF endings even when core.autocrlf=true.
+*.sh text eol=lf
