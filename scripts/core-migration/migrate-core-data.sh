@@ -61,16 +61,18 @@ if [ "$MODE" = schema ]; then
     -e ConnectionStrings__DefaultConnection="server=$TARGET_HOST;port=$TARGET_PORT;user=$TARGET_USER;password=$TARGET_PASSWORD;database=$TARGET_DATABASE;SslMode=$TARGET_SSL_MODE" \
     "$CORE_IMAGE")
   trap 'docker rm -f "$CID" >/dev/null 2>&1 || true' EXIT
-  for _ in $(seq 1 60); do
-    if tgt_sql "SELECT COUNT(*) FROM __EFMigrationsHistory;" >/dev/null 2>&1; then
-      sleep 5   # let the last migration finish
+  # The core applies its migrations one after another before it starts listening, and a remote server is slow: the
+  # run is finished only when the core says that it is listening (reading the history earlier gives a partial count).
+  for _ in $(seq 1 120); do
+    if docker logs "$CID" 2>&1 | grep -q "Now listening"; then
       echo "  migrations applied: $(tgt_sql 'SELECT COUNT(*) FROM __EFMigrationsHistory;')"
       echo "  tables: $(tgt_sql "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE();")"
       exit 0
     fi
+    [ "$(docker inspect -f '{{.State.Running}}' "$CID" 2>/dev/null)" = true ] || break
     sleep 3
   done
-  echo "The core did not create the schema in time. Container logs:" >&2; docker logs "$CID" 2>&1 | tail -20 >&2; exit 2
+  echo "The core did not create the schema. First lines of its log:" >&2; docker logs "$CID" 2>&1 | grep -v "^   at " | head -12 >&2; exit 2
 fi
 
 echo "== Connection"
