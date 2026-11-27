@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Devices.Application.CommandServices;
 using Anitec.Platform.Devices.Application.QueryServices;
@@ -29,7 +31,8 @@ public class DevicesController(
     IDeviceCommandService commandService,
     IDeviceQueryService queryService,
     IDeviceMetricQueryService metricQueryService,
-    IAnimalQueryService animalQueryService) : ControllerBase
+    IAnimalQueryService animalQueryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
@@ -104,6 +107,8 @@ public class DevicesController(
 
         var result = await commandService.Handle(new DeleteDeviceCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+        await auditLogger.RecordAsync(new AuditRecord(caller, caller.Id, AuditActions.DeleteDevice, "Device", id),
+            cancellationToken);
         return NoContent();
     }
 
@@ -125,6 +130,10 @@ public class DevicesController(
 
         var result = await commandService.Handle(new IssueDeviceApiKeyCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+
+        // Only the fact that a key was issued is recorded: the key itself is never stored or logged.
+        await auditLogger.RecordAsync(new AuditRecord(caller, caller.Id, AuditActions.IssueDeviceApiKey, "Device", id),
+            cancellationToken);
 
         Response.Headers.CacheControl = "no-store";
         return Ok(new DeviceApiKeyResource(id, result.Value!, DeviceApiKeyFilter.HeaderName));

@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Clients.Application.CommandServices;
 using Anitec.Platform.Clients.Application.QueryServices;
@@ -28,7 +30,8 @@ public class VeterinarianClientsController(
     IVeterinarianClientQueryService queryService,
     IUserQueryService userQueryService,
     IHerdQueryService herdQueryService,
-    IAnimalQueryService animalQueryService) : ControllerBase
+    IAnimalQueryService animalQueryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet("{veterinarianId:int}/clients")]
     public async Task<IActionResult> GetClients(int veterinarianId, CancellationToken cancellationToken)
@@ -97,6 +100,9 @@ public class VeterinarianClientsController(
 
         if (result.IsFailure) return Conflict(new { message = result.Message });
 
+        await auditLogger.RecordAsync(new AuditRecord(HttpContext.GetCaller()!, rancherId,
+            AuditActions.RequestVeterinarianAccess, "VeterinarianClient", result.Value?.Id,
+            new { veterinarianId }), cancellationToken);
         return CreatedAtAction(nameof(GetClients), new { veterinarianId }, result.Value);
     }
 
@@ -111,6 +117,9 @@ public class VeterinarianClientsController(
 
         if (result.IsFailure) return NotFound();
 
+        await auditLogger.RecordAsync(new AuditRecord(HttpContext.GetCaller()!, rancherId,
+            AuditActions.RemoveVeterinarianClient, "VeterinarianClient", null,
+            new { veterinarianId }), cancellationToken);
         return NoContent();
     }
 

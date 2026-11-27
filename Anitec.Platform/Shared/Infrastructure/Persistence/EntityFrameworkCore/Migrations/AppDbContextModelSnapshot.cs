@@ -585,6 +585,75 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                     b.ToTable("health_events");
                 });
 
+            modelBuilder.Entity("Anitec.Platform.Shared.Domain.Model.Entities.AuditLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("actor_role");
+
+                    b.Property<int>("ActorUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<string>("DetailsJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)")
+                        .HasColumnName("details_json");
+
+                    b.Property<int?>("EntityId")
+                        .HasColumnType("int")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("result");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_audit_log_entries");
+
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("i_x_audit_log_entries_correlation_id");
+
+                    b.HasIndex("OwnerUserId", "OccurredAt")
+                        .HasDatabaseName("i_x_audit_log_entries_owner_user_id_occurred_at");
+
+                    b.ToTable("audit_log_entries");
+                });
+
             modelBuilder.Entity("Anitec.Platform.Devices.Domain.Model.Entities.Device", b =>
                 {
                     b.HasOne("Anitec.Platform.Livestock.Domain.Model.Entities.Animal", null)

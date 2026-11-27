@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
@@ -19,7 +21,8 @@ namespace Anitec.Platform.Livestock.Interfaces.Rest;
 [SwaggerTag("Available Herds endpoints")]
 public class HerdsController(
     IHerdCommandService commandService,
-    IHerdQueryService queryService) : ControllerBase
+    IHerdQueryService queryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
@@ -90,6 +93,8 @@ public class HerdsController(
 
         var result = await commandService.Handle(new DeleteHerdCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+        await auditLogger.RecordAsync(new AuditRecord(caller, caller.Id, AuditActions.DeleteHerd, "Herd", id),
+            cancellationToken);
         return NoContent();
     }
 }

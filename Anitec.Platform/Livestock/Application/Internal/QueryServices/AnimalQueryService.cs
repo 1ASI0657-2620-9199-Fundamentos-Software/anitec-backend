@@ -63,6 +63,15 @@ public class AnimalQueryService(
         return query.AnimalIds.All(ownedAnimalIds.Contains);
     }
 
+    public async Task<int?> Handle(GetAnimalOwnerIdQuery query, CancellationToken cancellationToken)
+    {
+        var animal = await repository.FindByIdAsync(query.AnimalId, cancellationToken);
+        if (animal is null) return null;
+
+        var herd = await herdRepository.FindByIdAsync(animal.HerdId, cancellationToken);
+        return herd?.OwnerId;
+    }
+
     private async Task<HashSet<int>> GetOwnedHerdIdsAsync(CallerContext caller, CancellationToken cancellationToken)
     {
         var herds = await herdRepository.ListAsync(cancellationToken);

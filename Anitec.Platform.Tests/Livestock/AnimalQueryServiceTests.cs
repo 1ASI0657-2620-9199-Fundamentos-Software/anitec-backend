@@ -35,6 +35,24 @@ public class AnimalQueryServiceTests
     }
 
     [Fact]
+    public async Task GetAnimalOwnerId_ReturnsTheRancherThatOwnsTheHerdOfTheAnimal()
+    {
+        var animal = await SeedAnimalAsync(Luis.Id);
+
+        var owner = await CreateService().Handle(new GetAnimalOwnerIdQuery(animal.Id), CancellationToken.None);
+
+        Assert.Equal(Luis.Id, owner);
+    }
+
+    [Fact]
+    public async Task GetAnimalOwnerId_WhenTheAnimalDoesNotExist_ReturnsNull()
+    {
+        var owner = await CreateService().Handle(new GetAnimalOwnerIdQuery(999), CancellationToken.None);
+
+        Assert.Null(owner);
+    }
+
+    [Fact]
     public async Task AreAnimalsOwnedByCaller_WhenAllBelongToTheRancher_ReturnsTrue()
     {
         var first = await SeedAnimalAsync(Ana.Id);

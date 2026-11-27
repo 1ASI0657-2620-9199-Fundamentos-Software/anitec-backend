@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Financial.Application.CommandServices;
 using Anitec.Platform.Financial.Application.QueryServices;
@@ -20,7 +22,8 @@ namespace Anitec.Platform.Financial.Interfaces.Rest;
 [SwaggerTag("Available FinancialRecords endpoints")]
 public class FinancialRecordsController(
     IFinancialRecordCommandService commandService,
-    IFinancialRecordQueryService queryService) : ControllerBase
+    IFinancialRecordQueryService queryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
@@ -81,6 +84,9 @@ public class FinancialRecordsController(
 
         var result = await commandService.Handle(new DeleteFinancialRecordCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+        await auditLogger.RecordAsync(
+            new AuditRecord(caller, caller.Id, AuditActions.DeleteFinancialRecord, "FinancialRecord", id),
+            cancellationToken);
         return NoContent();
     }
 }

@@ -1,3 +1,4 @@
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
@@ -7,6 +8,25 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
 /// </summary>
 public static class ModelBuilderExtensions
 {
+    /// <summary>
+    ///     Configures the audit log (table <c>audit_logs</c>, after the plural rule of the naming convention).
+    /// </summary>
+    public static void ApplyAuditConfiguration(this ModelBuilder builder)
+    {
+        builder.Entity<AuditLogEntry>().HasKey(entry => entry.Id);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.Id).ValueGeneratedOnAdd();
+        builder.Entity<AuditLogEntry>().Property(entry => entry.CorrelationId).HasMaxLength(64);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.ActorRole).IsRequired().HasMaxLength(20);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.Action).IsRequired().HasMaxLength(60);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.EntityType).IsRequired().HasMaxLength(40);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.Result).IsRequired().HasMaxLength(20);
+        builder.Entity<AuditLogEntry>().Property(entry => entry.DetailsJson).HasMaxLength(2000);
+        // The rancher reads its own rows, newest first.
+        builder.Entity<AuditLogEntry>().HasIndex(entry => new { entry.OwnerUserId, entry.OccurredAt });
+        // Reconstructs the operations of one request (QAS-10).
+        builder.Entity<AuditLogEntry>().HasIndex(entry => entry.CorrelationId);
+    }
+
     /// <summary>
     ///     Use snake case naming convention for the database context
     /// </summary>
