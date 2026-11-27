@@ -20,6 +20,9 @@ public class NotificationsOptions
     /// </summary>
     public int UtcOffsetHours { get; set; } = -5;
 
+    /// <summary>Address of the web application, written at the end of the e-mail. Optional.</summary>
+    public string? AppUrl { get; set; }
+
     /// <summary>What day it is for the ranchers.</summary>
     public DateOnly Today(TimeProvider clock)
     {

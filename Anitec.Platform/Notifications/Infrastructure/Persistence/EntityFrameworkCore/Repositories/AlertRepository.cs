@@ -26,6 +26,15 @@ public class AlertRepository(AppDbContext context) : BaseRepository<Alert>(conte
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Alert>> ListToNotifyAsync(int maxAttempts, int take,
+        CancellationToken cancellationToken)
+    {
+        return await Context.Set<Alert>()
+            .Where(alert => alert.Status == AlertStatus.Pending && alert.NotifiedAt == null &&
+                            alert.NotificationAttempts < maxAttempts)
+            .OrderBy(alert => alert.Id).Take(take).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Alert>> ListSnoozedDueAsync(DateOnly today, CancellationToken cancellationToken)
     {
         return await Context.Set<Alert>()

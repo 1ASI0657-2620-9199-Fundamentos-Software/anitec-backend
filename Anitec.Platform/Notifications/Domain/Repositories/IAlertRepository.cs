@@ -12,6 +12,12 @@ public interface IAlertRepository : IBaseRepository<Alert>
     Task<IReadOnlyList<Alert>> ListByOwnerAsync(int ownerId, string? status, int limit,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Pending alerts whose e-mail was not sent yet and that were tried fewer than <paramref name="maxAttempts" />
+    ///     times, oldest first.
+    /// </summary>
+    Task<IReadOnlyList<Alert>> ListToNotifyAsync(int maxAttempts, int take, CancellationToken cancellationToken);
+
     /// <summary>Snoozed alerts whose new date is today or earlier.</summary>
     Task<IReadOnlyList<Alert>> ListSnoozedDueAsync(DateOnly today, CancellationToken cancellationToken);
 }
