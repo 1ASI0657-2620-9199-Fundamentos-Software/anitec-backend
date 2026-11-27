@@ -10,7 +10,7 @@
 #   deploy/azure/deploy.sh frontend-url   points the Stripe return pages to FRONTEND_URL (the published frontend)
 #   deploy/azure/deploy.sh core-database      S4: creates the core database and its own user on the Azure MySQL server (empty)
 #   deploy/azure/deploy.sh core-db azure|aiven   S4: points ca-core to the Azure MySQL database or back to Aiven (the cutover)
-#   deploy/azure/deploy.sh uploads            S4: Azure Files share mounted in ca-core so the uploaded images survive restarts
+#   deploy/azure/deploy.sh uploads            S4: Azure Files share in ca-core (NOT supported in express environments: it fails and cleans up)
 #   deploy/azure/deploy.sh alert-rule         S4: alert when the gateway answers 5xx (needs ALERT_EMAIL in the environment)
 #   deploy/azure/deploy.sh stop | start       S4: scales the apps to zero and stops MySQL / starts everything again (saves credit)
 #   deploy/azure/deploy.sh status      shows the gateway URL, the state of each app and the health of the system
@@ -256,8 +256,15 @@ cmd_uploads() {
   local key; key=$(az storage account keys list -g "$RG" -n "$STORAGE" --query "[0].value" -o tsv)
   az storage share-rm create -g "$RG" --storage-account "$STORAGE" -n uploads --quota 5 -o none
   log "Environment storage and volume of ca-core"
+  # Not supported when the environment is an "express environment" (the kind that this subscription gets): Azure answers
+  # ExpressEnvironmentResourceNotSupported (found on 27/11/2026). Then the images stay in the disk of the container and the
+  # way out is object storage with code changes, not a mount. The storage account that was created is removed.
   az containerapp env storage set -g "$RG" -n "$CAE" --storage-name uploads --azure-file-account-name "$STORAGE" \
-    --azure-file-account-key "$key" --azure-file-share-name uploads --access-mode ReadWrite -o none
+    --azure-file-account-key "$key" --azure-file-share-name uploads --access-mode ReadWrite -o none || {
+      echo "This environment does not accept Azure Files volumes. Removing the storage account $STORAGE." >&2
+      az storage account delete -g "$RG" -n "$STORAGE" -y -o none
+      exit 1
+    }
   local tmp; tmp=$(mktemp --suffix=.yaml)
   az containerapp show -g "$RG" -n ca-core -o json > "$tmp"
   python - "$tmp" <<'PY'
