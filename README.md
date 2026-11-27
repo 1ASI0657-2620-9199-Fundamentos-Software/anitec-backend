@@ -174,10 +174,13 @@ docker compose up --build
 ```bash
 python scripts/verification/verify_stack.py base                      # rutas, contrato del gateway, propiedad, webhook sin firma valida
 python scripts/verification/verify_stack.py isolation replicas        # detiene y vuelve a levantar contenedores
+python scripts/verification/verify_stack.py sprint4 sprint4-isolation # Sprint 4; levantar con ALERT_SCAN_INTERVAL_MINUTES=1
 python scripts/verification/verify_stack.py all --report resultado.json
 ```
 
 - `base` no cambia nada y se puede repetir.
+- `sprint4` comprueba el mismo `X-Correlation-Id` en los registros del gateway, del core y de Subscriptions, que no hay tokens en los registros, que el escaner crea las alertas una sola vez con las dos replicas, el flujo confirmar, posponer y cerrar con sus errores, la auditoria (solo el dueño, solo lectura, con el id de la solicitud) y el limite de animales del plan. Crea y borra registros de prueba y le da a `maria` un plan activo con el checkout simulado (solo Development); para repetirlo con datos limpios usa `docker compose down -v`.
+- `sprint4-isolation` detiene `subscriptions` y comprueba que el core sigue registrando animales (fail-open) y que el circuit breaker de cada replica se abre: como cada replica tiene su propio circuito, hasta 6 llamadas (3 por replica) esperan el timeout de 2 s y las siguientes no esperan.
 - `isolation` detiene `subscriptions`, comprueba que el core y `/health` siguen respondiendo 200 y que las rutas de suscripciones dan un error controlado con el nombre del servicio, y mide la recuperacion al volver.
 - `replicas` detiene `api1` y despues `gateway1` y mide lo que ve un cliente: peticiones fallidas, latencias y tiempo hasta volver a la rotacion. Con una replica del core caida hay unas pocas respuestas 502 (en las mediciones fueron 2 y 3 de 150) hasta que el gateway la marca como no sana: el gateway no reintenta una peticion en otra replica.
 - Tras un fallo de conexion nginx deja fuera a un gateway durante su `fail_timeout` (10 s por defecto); por eso `gateway1` tarda unos segundos en volver a recibir trafico.
