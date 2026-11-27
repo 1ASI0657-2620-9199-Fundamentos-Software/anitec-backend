@@ -98,6 +98,10 @@ public class GlobalExceptionHandlerMiddleware(
             Instance = context.Request.Path
         };
 
+        // The person who reports the failure can quote this id and the team finds every log line of the request.
+        if (context.Items.TryGetValue(CorrelationIdMiddleware.ItemKey, out var correlationId))
+            problemDetails.Extensions["correlationId"] = correlationId;
+
         var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         var result = JsonSerializer.Serialize(problemDetails, jsonOptions);
 

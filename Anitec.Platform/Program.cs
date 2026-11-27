@@ -244,6 +244,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseCorrelationId();
 app.UseGlobalExceptionHandler();
 
 var supportedCultures = new[] { "en", "es" };

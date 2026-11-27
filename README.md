@@ -182,6 +182,19 @@ python scripts/verification/verify_stack.py all --report resultado.json
 - `replicas` detiene `api1` y despues `gateway1` y mide lo que ve un cliente: peticiones fallidas, latencias y tiempo hasta volver a la rotacion. Con una replica del core caida hay unas pocas respuestas 502 (en las mediciones fueron 2 y 3 de 150) hasta que el gateway la marca como no sana: el gateway no reintenta una peticion en otra replica.
 - Tras un fallo de conexion nginx deja fuera a un gateway durante su `fail_timeout` (10 s por defecto); por eso `gateway1` tarda unos segundos en volver a recibir trafico.
 
+### Registros y correlacion entre servicios
+
+El gateway, el core y Subscriptions escriben sus registros en JSON, una linea por evento, con los ambitos activados. El gateway crea un `X-Correlation-Id` por peticion (o conserva el que llega si tiene un formato valido de 1 a 64 caracteres `A-Z a-z 0-9 . _ -`), los servicios lo reciben, lo ponen en el ambito del registro y lo devuelven en la respuesta. Cada servicio escribe al terminar la peticion una linea `HTTP <metodo> <ruta> responded <estado> in <ms> ms`, sin cabeceras, sin parametros de la URL y sin cuerpo (por eso ningun token ni clave llega al registro por esta via). Las comprobaciones de salud (`/health`) se escriben en el nivel `Debug`. Si el core falla con un 500, el problema JSON incluye `correlationId`.
+
+Para reconstruir el recorrido de una peticion en local:
+
+```bash
+curl -s -D - -o /dev/null http://localhost:8080/api/v1/subscription-plans   # copia el valor de X-Correlation-Id
+docker compose logs gateway1 gateway2 api1 api2 subscriptions --no-log-prefix | grep "<id>"
+```
+
+En Azure la consulta equivalente se hace en Log Analytics sobre `ContainerAppConsoleLogs_CL` buscando el id dentro de `Log_s`. Los registros de Entity Framework se limitan a `Warning`: sin ese limite cada consulta SQL llenaria el registro.
+
 ## Integracion continua
 
 `.github/workflows/ci.yml` se ejecuta en cada push y pull request hacia `develop` y `main`:
