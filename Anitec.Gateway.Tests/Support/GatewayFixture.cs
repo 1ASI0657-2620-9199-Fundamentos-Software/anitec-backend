@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Logging;
 
 namespace Anitec.Gateway.Tests.Support;
 
@@ -24,6 +25,9 @@ public class GatewayFixture : IAsyncLifetime
 
     /// <summary>The fixture of the running collection; the Gherkin steps use it because they cannot receive it by constructor.</summary>
     public static GatewayFixture Current { get; private set; } = null!;
+
+    /// <summary>Every log line of the gateway, with the correlation id that was in scope.</summary>
+    public LogCapture Logs { get; } = new();
 
     public HttpClient Client { get; private set; } = null!;
 
@@ -50,7 +54,11 @@ public class GatewayFixture : IAsyncLifetime
         Set("Gateway__ExposeStatus", "true");
         Set("Gateway__PassiveHealthWindowSeconds", "2");
 
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.ConfigureLogging(logging => logging.AddProvider(Logs));
+        });
         Client = _factory.CreateClient();
         Current = this;
     }

@@ -11,6 +11,7 @@ using Anitec.Subscriptions.Infrastructure.Persistence.EntityFrameworkCore.Reposi
 using Anitec.Subscriptions.Shared.Domain.Repositories;
 using Anitec.Subscriptions.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using Anitec.Subscriptions.Shared.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Subscriptions.Shared.Infrastructure.Pipeline;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -135,6 +136,7 @@ using (var scope = app.Services.CreateScope())
         context.Database.Migrate();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())

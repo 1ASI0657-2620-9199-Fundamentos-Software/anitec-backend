@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace Anitec.Gateway.Middleware;
@@ -27,7 +28,20 @@ public partial class CorrelationIdMiddleware(RequestDelegate next, ILogger<Corre
 
         using (logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId }))
         {
-            await next(context);
+            var started = Stopwatch.GetTimestamp();
+            try
+            {
+                await next(context);
+            }
+            finally
+            {
+                // One line per request, without headers, query string or body. The health checks that other
+                // components send every few seconds go to the debug level so they do not bury the useful lines.
+                var level = context.Request.Path == "/health" ? LogLevel.Debug : LogLevel.Information;
+                logger.Log(level, "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs} ms",
+                    context.Request.Method, context.Request.Path.Value, context.Response.StatusCode,
+                    (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            }
         }
     }
 

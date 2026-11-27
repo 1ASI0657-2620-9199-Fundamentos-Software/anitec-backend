@@ -7,6 +7,15 @@ namespace Anitec.Platform.Shared.Infrastructure.Pipeline.Middleware.Extensions;
 /// </summary>
 public static class MiddlewareExtensions
 {
+    /// <summary>
+    ///     Use the correlation id middleware. It goes first in the pipeline so that the exception handler, the
+    ///     authorization and every log line of the request run inside its logging scope.
+    /// </summary>
+    public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<CorrelationIdMiddleware>();
+    }
+
     /**
      * <summary>
      *     Use the global exception handler middleware

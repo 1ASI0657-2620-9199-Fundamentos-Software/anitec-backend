@@ -32,6 +32,21 @@ public class ContractTests(GatewayFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheGateway_WritesOneLogLineForTheRequest_WithTheSameIdThatTheServiceReceived()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/animals?apiKey=secret-query-value");
+        request.Headers.Add("X-Correlation-Id", "log-line-0001");
+        request.Headers.Add("Authorization", "Bearer secret-token-value");
+
+        await fixture.Client.SendAsync(request);
+
+        var line = Assert.Single(fixture.Logs.Lines, item => item.CorrelationId == "log-line-0001");
+        Assert.Contains("GET /api/v1/animals responded", line.Message);
+        Assert.DoesNotContain("secret", line.Message);
+        Assert.Equal("log-line-0001", CoreRequests.Single().Headers["X-Correlation-Id"]);
+    }
+
+    [Fact]
     public async Task AWellFormedCorrelationId_IsKept_ForCoreAndSubscriptions()
     {
         foreach (var path in new[] { "/api/v1/animals", "/api/v1/subscription-plans" })
