@@ -1,3 +1,4 @@
+using Anitec.Platform.Livestock.Application;
 using Anitec.Platform.Shared.Application.AuditLogging;
 using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
@@ -23,7 +24,8 @@ public class AnimalsController(
     IAnimalCommandService commandService,
     IAnimalQueryService queryService,
     IWebHostEnvironment webHostEnvironment,
-    IAuditLogger auditLogger) : ControllerBase
+    IAuditLogger auditLogger,
+    IAnimalPlanLimitService planLimit) : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     [HttpGet]
@@ -58,6 +60,9 @@ public class AnimalsController(
         if (errors.Count > 0) return BadRequest(new { message = "One or more fields are invalid.", errors });
         if (!await queryService.Handle(new IsHerdOwnedByCallerQuery(resource.HerdId, caller), cancellationToken))
             return NotFound();
+
+        var limit = await planLimit.CheckAsync(caller, BearerToken(), 1, cancellationToken);
+        if (!limit.Allowed) return PlanLimitReached(limit);
 
         var command = CreateAnimalCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);
@@ -98,6 +103,26 @@ public class AnimalsController(
         return errors;
     }
 
+    /// <summary>The token of the request, to ask the Subscriptions service for the plan of the same rancher.</summary>
+    private string? BearerToken()
+    {
+        var header = Request.Headers.Authorization.ToString();
+        return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : null;
+    }
+
+    /// <summary>409 with a code that the frontend recognizes, so it can offer a bigger plan.</summary>
+    private IActionResult PlanLimitReached(PlanLimitDecision limit)
+    {
+        return Conflict(new
+        {
+            code = "PLAN_LIMIT_REACHED",
+            message = $"The plan {limit.PlanName} allows up to {limit.MaxAnimals} animals and you have {limit.CurrentAnimals}.",
+            planName = limit.PlanName,
+            maxAnimals = limit.MaxAnimals,
+            currentAnimals = limit.CurrentAnimals
+        });
+    }
+
     [Authorize("Rancher")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
@@ -132,6 +157,9 @@ public class AnimalsController(
         if (errors.Count > 0) return BadRequest(new { message = "One or more fields are invalid.", errors });
         if (!await queryService.Handle(new IsHerdOwnedByCallerQuery(resource.HerdId, caller), cancellationToken))
             return NotFound();
+
+        var limit = await planLimit.CheckAsync(caller, BearerToken(), resource.Quantity, cancellationToken);
+        if (!limit.Allowed) return PlanLimitReached(limit);
 
         var command = CreateAnimalBatchCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);

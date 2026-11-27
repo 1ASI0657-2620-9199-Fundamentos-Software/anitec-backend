@@ -43,7 +43,10 @@ using Anitec.Platform.Iam.Infrastructure.Tokens.Jwt.Configuration;
 using Anitec.Platform.Iam.Infrastructure.Tokens.Jwt.Services;
 using Anitec.Platform.Iam.Interfaces.Acl;
 using Anitec.Platform.Iam.Resources;
+using Anitec.Platform.Livestock.Application;
 using Anitec.Platform.Livestock.Application.CommandServices;
+using Anitec.Platform.Livestock.Application.Internal.OutboundServices;
+using Anitec.Platform.Livestock.Infrastructure.Subscriptions;
 using Anitec.Platform.Livestock.Application.Internal.CommandServices;
 using Anitec.Platform.Livestock.Application.Internal.QueryServices;
 using Anitec.Platform.Livestock.Application.QueryServices;
@@ -191,6 +194,11 @@ builder.Services.AddScoped<IHerdQueryService, HerdQueryService>();
 builder.Services.AddScoped<IAnimalRepository, AnimalRepository>();
 builder.Services.AddScoped<IAnimalCommandService, AnimalCommandService>();
 builder.Services.AddScoped<IAnimalQueryService, AnimalQueryService>();
+// Limit of animals of the plan: the first call from the core to another service. It has a timeout and a circuit
+// breaker, and it fails open, so a failure of Subscriptions never stops a rancher from registering animals.
+builder.Services.Configure<SubscriptionsClientOptions>(builder.Configuration.GetSection(SubscriptionsClientOptions.SectionName));
+builder.Services.AddSubscriptionPlanClient();
+builder.Services.AddScoped<IAnimalPlanLimitService, AnimalPlanLimitService>();
 builder.Services.AddScoped<ICorralRepository, CorralRepository>();
 builder.Services.AddScoped<ICorralCommandService, CorralCommandService>();
 builder.Services.AddScoped<ICorralQueryService, CorralQueryService>();
