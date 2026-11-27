@@ -70,11 +70,13 @@ using Anitec.Platform.Sanitary.Application.Internal.QueryServices;
 using Anitec.Platform.Sanitary.Application.QueryServices;
 using Anitec.Platform.Sanitary.Domain.Repositories;
 using Anitec.Platform.Sanitary.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Shared.Application.AuditLogging;
 using Anitec.Platform.Shared.Domain.Repositories;
 using Anitec.Platform.Shared.Infrastructure.Interfaces.AspNetCore.Configuration;
 using Anitec.Platform.Shared.Infrastructure.Mediator.Cortex.Configuration;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Shared.Infrastructure.Pipeline;
 using Anitec.Platform.Shared.Infrastructure.Pipeline.Middleware.Extensions;
 using Cortex.Mediator.Commands;
 using Cortex.Mediator.DependencyInjection;
@@ -164,6 +166,12 @@ builder.Services.AddSwaggerGen(options =>
 
 // Shared Bounded Context
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICorrelationIdAccessor, HttpCorrelationIdAccessor>();
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+builder.Services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
 
 // Livestock Bounded Context
 builder.Services.AddScoped<IHerdRepository, HerdRepository>();

@@ -26,7 +26,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
     protected override void OnConfiguring(DbContextOptionsBuilder builder)
     {
         // Apply audit timestamp interceptor for all IAuditableEntity implementations
-        builder.AddInterceptors(new AuditableEntityInterceptor());
+        builder.AddInterceptors(new AuditableEntityInterceptor(), new AuditLogImmutabilityInterceptor());
         base.OnConfiguring(builder);
     }
 
@@ -52,6 +52,9 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         builder.ApplyClientsConfiguration();
         builder.ApplyDevicesConfiguration();
         builder.ApplyMetricsConfiguration();
+
+        // Shared: audit log of the sensitive operations
+        builder.ApplyAuditConfiguration();
 
         // Profiles Context
         builder.ApplyProfilesConfiguration();

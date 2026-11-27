@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Clients.Application.CommandServices;
 using Anitec.Platform.Clients.Application.QueryServices;
@@ -26,7 +28,8 @@ namespace Anitec.Platform.Clients.Interfaces.Rest;
 public class RancherVeterinarianRequestsController(
     IVeterinarianClientCommandService commandService,
     IVeterinarianClientQueryService queryService,
-    IUserQueryService userQueryService) : ControllerBase
+    IUserQueryService userQueryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetRequests(int rancherId, CancellationToken cancellationToken)
@@ -47,6 +50,10 @@ public class RancherVeterinarianRequestsController(
         if (!IsCallerRancher(rancherId, out var denied)) return denied!;
 
         var result = await commandService.Handle(new ApproveVeterinarianClientCommand(veterinarianId, rancherId), cancellationToken);
+        if (result.IsSuccess)
+            await auditLogger.RecordAsync(new AuditRecord(HttpContext.GetCaller()!, rancherId,
+                AuditActions.ApproveVeterinarianAccess, "VeterinarianClient", result.Value?.Id,
+                new { veterinarianId }), cancellationToken);
         return await ToActionResultAsync(result.IsSuccess, result.Error, result.Message, result.Value, cancellationToken);
     }
 
@@ -56,6 +63,10 @@ public class RancherVeterinarianRequestsController(
         if (!IsCallerRancher(rancherId, out var denied)) return denied!;
 
         var result = await commandService.Handle(new RejectVeterinarianClientCommand(veterinarianId, rancherId), cancellationToken);
+        if (result.IsSuccess)
+            await auditLogger.RecordAsync(new AuditRecord(HttpContext.GetCaller()!, rancherId,
+                AuditActions.RejectVeterinarianAccess, "VeterinarianClient", result.Value?.Id,
+                new { veterinarianId }), cancellationToken);
         return await ToActionResultAsync(result.IsSuccess, result.Error, result.Message, result.Value, cancellationToken);
     }
 

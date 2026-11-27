@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Sanitary.Application.CommandServices;
 using Anitec.Platform.Sanitary.Application.QueryServices;
@@ -23,7 +25,8 @@ namespace Anitec.Platform.Sanitary.Interfaces.Rest;
 public class HealthEventsController(
     IHealthEventCommandService commandService,
     IHealthEventQueryService queryService,
-    IAnimalQueryService animalQueryService) : ControllerBase
+    IAnimalQueryService animalQueryService,
+    IAuditLogger auditLogger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
@@ -55,6 +58,7 @@ public class HealthEventsController(
 
         var command = CreateHealthEventCommandFromResourceAssembler.ToCommandFromResource(resource);
         var result = await commandService.Handle(command, cancellationToken);
+        await RecordAsync(caller, AuditActions.CreateHealthEvent, resource.AnimalId, result.Value!.Id, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id },
             HealthEventResourceFromEntityAssembler.ToResourceFromEntity(result.Value));
     }
@@ -71,6 +75,7 @@ public class HealthEventsController(
         var command = UpdateHealthEventCommandFromResourceAssembler.ToCommandFromResource(id, resource);
         var result = await commandService.Handle(command, cancellationToken);
         if (result.IsFailure) return NotFound();
+        await RecordAsync(caller, AuditActions.UpdateHealthEvent, resource.AnimalId, id, cancellationToken);
         return Ok(HealthEventResourceFromEntityAssembler.ToResourceFromEntity(result.Value!));
     }
 
@@ -79,12 +84,28 @@ public class HealthEventsController(
     {
         var caller = HttpContext.GetCaller();
         if (caller is null) return Unauthorized();
-        if (await queryService.Handle(new GetHealthEventByIdForCallerQuery(id, caller), cancellationToken) is null)
-            return NotFound();
+        var healthEvent = await queryService.Handle(new GetHealthEventByIdForCallerQuery(id, caller), cancellationToken);
+        if (healthEvent is null) return NotFound();
 
         var result = await commandService.Handle(new DeleteHealthEventCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+        await RecordAsync(caller, AuditActions.DeleteHealthEvent, healthEvent.AnimalId, id, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    ///     A veterinarian can change the clinical record of an animal of a rancher, so the entry belongs to the owner
+    ///     of the animal: the rancher sees what the veterinarian did.
+    /// </summary>
+    private async Task RecordAsync(CallerContext caller, string action, int animalId, int healthEventId,
+        CancellationToken cancellationToken)
+    {
+        var ownerId = await animalQueryService.Handle(new GetAnimalOwnerIdQuery(animalId), cancellationToken);
+        if (ownerId is null) return;
+
+        await auditLogger.RecordAsync(
+            new AuditRecord(caller, ownerId.Value, action, "HealthEvent", healthEventId, new { animalId }),
+            cancellationToken);
     }
 
     private async Task<bool> CanAccessAnimalAsync(int animalId, CallerContext caller, CancellationToken cancellationToken)

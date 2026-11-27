@@ -17,4 +17,7 @@ public interface IAnimalQueryService
     Task<Animal?> Handle(GetAnimalByIdForCallerQuery query, CancellationToken cancellationToken);
     Task<bool> Handle(IsHerdOwnedByCallerQuery query, CancellationToken cancellationToken);
     Task<bool> Handle(AreAnimalsOwnedByCallerQuery query, CancellationToken cancellationToken);
+
+    /// <summary>The rancher that owns the animal, or null when the animal or its herd does not exist.</summary>
+    Task<int?> Handle(GetAnimalOwnerIdQuery query, CancellationToken cancellationToken);
 }

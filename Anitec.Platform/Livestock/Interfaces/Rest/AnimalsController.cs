@@ -1,3 +1,5 @@
+using Anitec.Platform.Shared.Application.AuditLogging;
+using Anitec.Platform.Shared.Domain.Model.Entities;
 using System.Net.Mime;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Attributes;
 using Anitec.Platform.Iam.Infrastructure.Pipeline.Middleware.Extensions;
@@ -20,7 +22,8 @@ namespace Anitec.Platform.Livestock.Interfaces.Rest;
 public class AnimalsController(
     IAnimalCommandService commandService,
     IAnimalQueryService queryService,
-    IWebHostEnvironment webHostEnvironment) : ControllerBase
+    IWebHostEnvironment webHostEnvironment,
+    IAuditLogger auditLogger) : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     [HttpGet]
@@ -106,6 +109,8 @@ public class AnimalsController(
 
         var result = await commandService.Handle(new DeleteAnimalCommand(id), cancellationToken);
         if (result.IsFailure) return NotFound();
+        await auditLogger.RecordAsync(new AuditRecord(caller, caller.Id, AuditActions.DeleteAnimal, "Animal", id),
+            cancellationToken);
         return NoContent();
     }
 
@@ -167,6 +172,8 @@ public class AnimalsController(
 
         var result = await commandService.Handle(new DeleteAnimalsCommand(resource.AnimalIds), cancellationToken);
         if (result.IsFailure) return BadRequest(new { message = result.Message });
+        await auditLogger.RecordAsync(new AuditRecord(caller, caller.Id, AuditActions.DeleteAnimals, "Animal", null,
+            new { animalIds = resource.AnimalIds }), cancellationToken);
         return NoContent();
     }
 
