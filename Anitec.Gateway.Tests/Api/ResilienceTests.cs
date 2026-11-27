@@ -63,12 +63,17 @@ public class ResilienceTests(GatewayFixture fixture) : IAsyncLifetime
     {
         await fixture.Api1.StopAsync();
 
-        // The first request to the dead replica may fail; after that it is out of the rotation.
+        // The requests that arrive before the passive check marks the replica as unhealthy fail. How many depends on
+        // how fast the check runs and on how many idle connections to the dead replica the pool holds: 1 on Windows,
+        // up to 3 on a Linux runner. The gateway does not retry, which is a declared limit of the Sprint.
         var failures = 0;
         for (var i = 0; i < 6; i++)
             if ((await fixture.Client.GetAsync("/api/v1/animals")).StatusCode != HttpStatusCode.OK)
                 failures++;
-        Assert.True(failures <= 1, $"{failures} requests failed before the replica left the rotation");
+        Assert.True(failures <= 3, $"{failures} requests failed before the replica left the rotation");
+
+        await GatewayFixture.WaitUntilAsync(async () =>
+            (await fixture.StatusAsync()).Contains(("core", "api1", "Unhealthy")));
 
         fixture.Api2.Clear();
         for (var i = 0; i < 10; i++)
