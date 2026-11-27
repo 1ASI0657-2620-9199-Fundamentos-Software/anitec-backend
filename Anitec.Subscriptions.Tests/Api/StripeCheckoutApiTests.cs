@@ -88,6 +88,27 @@ public class StripeCheckoutApiTests : IClassFixture<SubscriptionsApiFactory>
     }
 
     [Fact]
+    public async Task Checkout_WhenTheCircuitIsOpen_Answers503AtOnce_WithRetryAfter()
+    {
+        _factory.Gateway.CircuitOpen = true;
+        try
+        {
+            var response = await _factory.CreateClientFor(SubscriptionsApiFactory.NewUserId()).PostAsJsonAsync(
+                "/api/v1/subscriptions/stripe-checkout", new { planId = 1 });
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Equal("30", response.Headers.GetValues("Retry-After").Single());
+            var text = await response.Content.ReadAsStringAsync();
+            Assert.Contains("Payments temporarily unavailable", text);
+            Assert.DoesNotContain("StripeSettings", text);
+        }
+        finally
+        {
+            _factory.Gateway.CircuitOpen = false;
+        }
+    }
+
+    [Fact]
     public async Task Confirm_OfAPaidSession_StoresItOnce_AndAnotherConfirmAndTheWebhookReuseIt()
     {
         var userId = SubscriptionsApiFactory.NewUserId();

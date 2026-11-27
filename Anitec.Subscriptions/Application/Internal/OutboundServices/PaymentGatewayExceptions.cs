@@ -7,6 +7,16 @@ public class PaymentGatewayNotConfiguredException(string message) : Exception(me
 public class PaymentGatewayException(string message, Exception? innerException = null)
     : Exception(message, innerException);
 
+/// <summary>
+///     The calls to the payment provider are suspended because it failed many times in a row (circuit breaker). The
+///     caller answers at once, without waiting, and can try again after <see cref="RetryAfter" />.
+/// </summary>
+public class PaymentGatewayUnavailableException(string message, TimeSpan retryAfter, Exception? innerException = null)
+    : PaymentGatewayException(message, innerException)
+{
+    public TimeSpan RetryAfter { get; } = retryAfter;
+}
+
 /// <summary>The signature of a webhook is missing or does not match the payload.</summary>
 public class InvalidWebhookSignatureException(string message, Exception? innerException = null)
     : Exception(message, innerException);

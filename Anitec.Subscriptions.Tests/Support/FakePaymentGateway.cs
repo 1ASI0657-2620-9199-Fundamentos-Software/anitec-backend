@@ -24,6 +24,9 @@ public sealed class FakePaymentGateway : IPaymentGateway
     /// <summary>Makes the creation and the reading of sessions fail as when Stripe is down.</summary>
     public bool Failing { get; set; }
 
+    /// <summary>Makes every call fail as when the circuit breaker is open after repeated failures of Stripe.</summary>
+    public bool CircuitOpen { get; set; }
+
     public IReadOnlyList<CheckoutSessionRequest> Requests
     {
         get
@@ -97,6 +100,8 @@ public sealed class FakePaymentGateway : IPaymentGateway
     private void ThrowIfUnavailable()
     {
         if (NotConfigured) throw new PaymentGatewayNotConfiguredException("StripeSettings:SecretKey is not configured.");
+        if (CircuitOpen)
+            throw new PaymentGatewayUnavailableException("Calls to Stripe are suspended.", TimeSpan.FromSeconds(30));
         if (Failing) throw new PaymentGatewayException("Stripe is not reachable.");
     }
 }
