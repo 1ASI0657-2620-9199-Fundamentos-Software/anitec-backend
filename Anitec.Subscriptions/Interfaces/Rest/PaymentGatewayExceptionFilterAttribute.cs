@@ -20,6 +20,14 @@ public sealed class PaymentGatewayExceptionFilterAttribute : ExceptionFilterAttr
                     "The payment provider is not configured in this environment.");
                 context.ExceptionHandled = true;
                 break;
+            case PaymentGatewayUnavailableException unavailable:
+                // The circuit breaker is open: Stripe has been failing, so the call was not even tried.
+                context.HttpContext.Response.Headers.RetryAfter =
+                    Math.Max(1, (int)Math.Ceiling(unavailable.RetryAfter.TotalSeconds)).ToString();
+                context.Result = Problem(StatusCodes.Status503ServiceUnavailable, "Payments temporarily unavailable",
+                    "The payment provider is not answering. Try again in a few moments.");
+                context.ExceptionHandled = true;
+                break;
             case PaymentGatewayException:
                 context.Result = Problem(StatusCodes.Status502BadGateway, "Payment provider error",
                     "The payment provider did not answer correctly. Try again later.");

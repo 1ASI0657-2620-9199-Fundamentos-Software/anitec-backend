@@ -123,6 +123,7 @@ builder.Services.AddScoped<IPaymentQueryService, PaymentQueryService>();
 // Stripe: the keys and URLs come from StripeSettings__* variables. The gateway is a singleton that keeps its own
 // StripeClient; the checkout service depends only on the IPaymentGateway contract.
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
+builder.Services.Configure<StripeResilienceOptions>(builder.Configuration.GetSection(StripeResilienceOptions.SectionName));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPaymentGateway, StripePaymentGateway>();
 builder.Services.AddScoped<ICheckoutCommandService, CheckoutCommandService>();

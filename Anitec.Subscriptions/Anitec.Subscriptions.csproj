@@ -19,6 +19,7 @@
         <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.7" />
         <!-- Snake case table and column names, as in the core -->
         <PackageReference Include="Humanizer" Version="3.0.10" />
+        <PackageReference Include="Polly.Core" Version="8.9.1" />
         <!-- Stripe -->
         <PackageReference Include="Stripe.net" Version="52.1.0" />
         <!-- JWT validation: the service only checks the signature of the token issued by the core -->
