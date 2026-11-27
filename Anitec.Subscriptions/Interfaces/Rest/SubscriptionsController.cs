@@ -59,6 +59,25 @@ public class SubscriptionsController(
             SubscriptionResourceFromEntityAssembler.ToResourceFromEntity(result.Value));
     }
 
+    /// <summary>
+    ///     The plan that the caller has paid for and how many animals it allows. The core asks for it before it
+    ///     registers animals (the limit of the plan). 404 means that there is no active subscription.
+    /// </summary>
+    [HttpGet("active-plan")]
+    public async Task<IActionResult> GetActivePlan(CancellationToken cancellationToken)
+    {
+        var caller = User.GetCaller();
+        if (caller is null) return Unauthorized();
+
+        var subscription = await queryService.Handle(new GetActiveSubscriptionByUserQuery(caller.Id), cancellationToken);
+        if (subscription is null) return NotFound();
+
+        var plan = await planQueryService.Handle(new GetSubscriptionPlanByIdQuery(subscription.PlanId), cancellationToken);
+        if (plan is null) return NotFound();
+
+        return Ok(new ActivePlanResource(subscription.Id, plan.Id, plan.Name, plan.MaxAnimals, subscription.Status));
+    }
+
     [HttpGet("users/{userId:int}/active")]
     public async Task<IActionResult> GetActiveByUser(int userId, CancellationToken cancellationToken)
     {

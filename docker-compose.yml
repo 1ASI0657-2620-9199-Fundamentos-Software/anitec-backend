@@ -59,6 +59,8 @@ services:
       ConnectionStrings__DefaultConnection: "server=db;port=3306;user=root;password=${MYSQL_ROOT_PASSWORD};database=anitec-platform;SslMode=Disabled;AllowPublicKeyRetrieval=True"
       TokenSettings__Secret: ${TOKEN_SECRET:?copy .env.example to .env and set it}
       Telemetry__MinIntervalSeconds: ${TELEMETRY_MIN_INTERVAL_SECONDS:-10}
+      # Where the core asks for the plan of a rancher (limit of animals). If the service is down the limit is not applied.
+      Subscriptions__BaseUrl: http://subscriptions:8080
       # Alerts about due dates: the scanner of each replica runs every N minutes (15 in production).
       Notifications__ScanIntervalMinutes: ${ALERT_SCAN_INTERVAL_MINUTES:-15}
       Notifications__StartDelaySeconds: ${ALERT_SCAN_START_DELAY_SECONDS:-20}
