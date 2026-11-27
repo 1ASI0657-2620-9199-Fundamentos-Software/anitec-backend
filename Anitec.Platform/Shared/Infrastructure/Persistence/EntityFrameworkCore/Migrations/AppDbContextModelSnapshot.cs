@@ -491,6 +491,89 @@ namespace Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.
                     b.ToTable("device_metrics");
                 });
 
+            modelBuilder.Entity("Anitec.Platform.Notifications.Domain.Model.Entities.Alert", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("AnimalId")
+                        .HasColumnType("int")
+                        .HasColumnName("animal_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("due_date");
+
+                    b.Property<int>("NotificationAttempts")
+                        .HasColumnType("int")
+                        .HasColumnName("notification_attempts");
+
+                    b.Property<DateTime?>("NotifiedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("notified_at");
+
+                    b.Property<int>("OwnerId")
+                        .HasColumnType("int")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("ResolutionReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasColumnName("resolution_reason");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<int?>("ResolvedByUserId")
+                        .HasColumnType("int")
+                        .HasColumnName("resolved_by_user_id");
+
+                    b.Property<DateTime>("SourceDueDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("source_due_date");
+
+                    b.Property<int>("SourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_alerts");
+
+                    b.HasIndex("OwnerId", "Status", "DueDate")
+                        .HasDatabaseName("i_x_alerts_owner_id_status_due_date");
+
+                    b.HasIndex("SourceType", "SourceId", "SourceDueDate")
+                        .IsUnique()
+                        .HasDatabaseName("i_x_alerts_source_type_source_id_source_due_date");
+
+                    b.ToTable("alerts");
+                });
+
             modelBuilder.Entity("Anitec.Platform.Profiles.Domain.Model.Aggregates.Profile", b =>
                 {
                     b.Property<int>("Id")
