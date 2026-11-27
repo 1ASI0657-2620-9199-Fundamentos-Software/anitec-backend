@@ -31,6 +31,12 @@ public sealed class ManualTimeProvider : TimeProvider
     {
         _now += span;
     }
+
+    /// <summary>Moves the clock to noon UTC of the given date.</summary>
+    public void SetDate(DateOnly date)
+    {
+        _now = new DateTimeOffset(date.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero);
+    }
 }
 
 public sealed class FixedCorrelationId : ICorrelationIdAccessor

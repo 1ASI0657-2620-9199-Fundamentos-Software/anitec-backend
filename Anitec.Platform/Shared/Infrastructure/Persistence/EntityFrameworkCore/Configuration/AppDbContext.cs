@@ -6,6 +6,7 @@ using Anitec.Platform.Financial.Infrastructure.Persistence.EntityFrameworkCore.C
 using Anitec.Platform.Iam.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Livestock.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Metrics.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
+using Anitec.Platform.Notifications.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Profiles.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Sanitary.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
 using Anitec.Platform.Shared.Infrastructure.Persistence.EntityFrameworkCore.Configuration.Extensions;
@@ -52,6 +53,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         builder.ApplyClientsConfiguration();
         builder.ApplyDevicesConfiguration();
         builder.ApplyMetricsConfiguration();
+        builder.ApplyNotificationsConfiguration();
 
         // Shared: audit log of the sensitive operations
         builder.ApplyAuditConfiguration();

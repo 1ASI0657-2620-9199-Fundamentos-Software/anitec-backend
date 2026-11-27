@@ -55,6 +55,14 @@ using Anitec.Platform.Metrics.Application.Internal.QueryServices;
 using Anitec.Platform.Metrics.Application.QueryServices;
 using Anitec.Platform.Metrics.Domain.Repositories;
 using Anitec.Platform.Metrics.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Notifications.Application;
+using Anitec.Platform.Notifications.Application.CommandServices;
+using Anitec.Platform.Notifications.Application.Internal.CommandServices;
+using Anitec.Platform.Notifications.Application.Internal.QueryServices;
+using Anitec.Platform.Notifications.Application.QueryServices;
+using Anitec.Platform.Notifications.Domain.Repositories;
+using Anitec.Platform.Notifications.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
+using Anitec.Platform.Notifications.Infrastructure.Scheduling;
 using Anitec.Platform.Profiles.Application.CommandServices;
 using Anitec.Platform.Profiles.Application.Internal.CommandServices;
 using Anitec.Platform.Profiles.Application.Internal.QueryServices;
@@ -219,6 +227,14 @@ builder.Services.AddScoped<DeviceApiKeyFilter>();
 builder.Services.AddScoped<IDeviceMetricRepository, DeviceMetricRepository>();
 builder.Services.AddScoped<IDeviceMetricCommandService, DeviceMetricCommandService>();
 builder.Services.AddScoped<IDeviceMetricQueryService, DeviceMetricQueryService>();
+
+// Notifications Bounded Context: alerts about due dates that nobody confirmed, found by a background scanner
+builder.Services.Configure<NotificationsOptions>(builder.Configuration.GetSection(NotificationsOptions.SectionName));
+builder.Services.AddScoped<IAlertRepository, AlertRepository>();
+builder.Services.AddScoped<IAlertCommandService, AlertCommandService>();
+builder.Services.AddScoped<IAlertQueryService, AlertQueryService>();
+builder.Services.AddScoped<IDueDateScanService, DueDateScanService>();
+builder.Services.AddHostedService<DueDateScanningService>();
 
 // Profiles Bounded Context
 builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
