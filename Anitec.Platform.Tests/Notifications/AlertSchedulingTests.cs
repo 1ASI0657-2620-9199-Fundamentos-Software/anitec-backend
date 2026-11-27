@@ -115,7 +115,8 @@ public class AlertSchedulingTests
     private static DueDateScanningService NewHostedService(IDueDateScanService scan, NotificationsOptions options,
         ILogger<DueDateScanningService> logger)
     {
-        var services = new ServiceCollection().AddSingleton(scan).BuildServiceProvider();
+        var services = new ServiceCollection().AddSingleton(scan)
+            .AddSingleton(Substitute.For<IAlertNotifier>()).BuildServiceProvider();
         return new DueDateScanningService(services.GetRequiredService<IServiceScopeFactory>(), Options.Create(options),
             logger);
     }

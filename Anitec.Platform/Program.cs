@@ -61,6 +61,9 @@ using Anitec.Platform.Notifications.Application.Internal.CommandServices;
 using Anitec.Platform.Notifications.Application.Internal.QueryServices;
 using Anitec.Platform.Notifications.Application.QueryServices;
 using Anitec.Platform.Notifications.Domain.Repositories;
+using Anitec.Platform.Notifications.Application.Internal.OutboundServices;
+using Anitec.Platform.Notifications.Infrastructure.Contacts;
+using Anitec.Platform.Notifications.Infrastructure.Email;
 using Anitec.Platform.Notifications.Infrastructure.Persistence.EntityFrameworkCore.Repositories;
 using Anitec.Platform.Notifications.Infrastructure.Scheduling;
 using Anitec.Platform.Profiles.Application.CommandServices;
@@ -234,6 +237,11 @@ builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 builder.Services.AddScoped<IAlertCommandService, AlertCommandService>();
 builder.Services.AddScoped<IAlertQueryService, AlertQueryService>();
 builder.Services.AddScoped<IDueDateScanService, DueDateScanService>();
+builder.Services.AddScoped<IAlertNotifier, AlertNotifier>();
+builder.Services.AddScoped<IOwnerEmailLookup, ProfileOwnerEmailLookup>();
+// The key of Resend comes only from Resend__ApiKey. Without it the e-mail is off and the alerts still work.
+builder.Services.Configure<ResendOptions>(builder.Configuration.GetSection(ResendOptions.SectionName));
+builder.Services.AddHttpClient<IEmailNotificationService, ResendEmailNotificationService>();
 builder.Services.AddHostedService<DueDateScanningService>();
 
 // Profiles Bounded Context

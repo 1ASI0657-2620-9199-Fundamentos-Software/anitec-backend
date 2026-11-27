@@ -187,6 +187,7 @@ public class AlertsSteps(AlertsWorld world)
             .Handle(new ConfirmAlertCommand(alert.Id, Rancher(rancherId)), CancellationToken.None);
     }
 
+    [Given(@"rancher (\d+) snoozes the alert ""(.*)"" for (\d+) days with the reason ""(.*)""")]
     [When(@"rancher (\d+) snoozes the alert ""(.*)"" for (\d+) days with the reason ""(.*)""")]
     public async Task WhenTheRancherSnoozes(int rancherId, string title, int days, string reason)
     {

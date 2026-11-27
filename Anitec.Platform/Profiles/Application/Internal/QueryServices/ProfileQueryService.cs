@@ -39,6 +39,14 @@ public class ProfileQueryService(IProfileRepository profileRepository) : IProfil
     }
 
     /// <inheritdoc />
+    public async Task<Profile?> Handle(GetProfileByOwnerIdQuery query, CancellationToken cancellationToken)
+    {
+        var profiles = await profileRepository.ListAsync(cancellationToken);
+        return profiles.Where(profile => profile.OwnerId == query.OwnerId).OrderBy(profile => profile.Id)
+            .FirstOrDefault();
+    }
+
+    /// <inheritdoc />
     public async Task<Profile?> Handle(GetProfileByIdForCallerQuery query, CancellationToken cancellationToken)
     {
         var profile = await profileRepository.FindByIdAsync(query.ProfileId, cancellationToken);

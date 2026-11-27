@@ -59,6 +59,13 @@ services:
       ConnectionStrings__DefaultConnection: "server=db;port=3306;user=root;password=${MYSQL_ROOT_PASSWORD};database=anitec-platform;SslMode=Disabled;AllowPublicKeyRetrieval=True"
       TokenSettings__Secret: ${TOKEN_SECRET:?copy .env.example to .env and set it}
       Telemetry__MinIntervalSeconds: ${TELEMETRY_MIN_INTERVAL_SECONDS:-10}
+      # Alerts about due dates: the scanner of each replica runs every N minutes (15 in production).
+      Notifications__ScanIntervalMinutes: ${ALERT_SCAN_INTERVAL_MINUTES:-15}
+      Notifications__StartDelaySeconds: ${ALERT_SCAN_START_DELAY_SECONDS:-20}
+      Notifications__AppUrl: ${FRONTEND_URL:-http://localhost:5173}
+      # E-mail of the alerts through Resend. Without a key the alerts still work and no e-mail is sent.
+      Resend__ApiKey: ${RESEND_API_KEY:-}
+      Resend__From: ${RESEND_FROM:-AniTec <onboarding@resend.dev>}
     volumes:
       - uploads:/app/wwwroot/uploads
     depends_on:

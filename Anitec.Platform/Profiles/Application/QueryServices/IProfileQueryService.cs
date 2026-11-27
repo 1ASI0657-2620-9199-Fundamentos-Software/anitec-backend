@@ -48,6 +48,12 @@ public interface IProfileQueryService
     /// <summary>The profiles that the caller created.</summary>
     Task<IEnumerable<Profile>> Handle(GetProfilesForCallerQuery query, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     The first profile whose owner is the user. For internal use (for example to find the e-mail address that
+    ///     an alert is sent to); API endpoints must use <see cref="GetProfilesForCallerQuery" />.
+    /// </summary>
+    Task<Profile?> Handle(GetProfileByOwnerIdQuery query, CancellationToken cancellationToken);
+
     /// <summary>A profile by id, or null when the caller did not create it.</summary>
     Task<Profile?> Handle(GetProfileByIdForCallerQuery query, CancellationToken cancellationToken);
 }

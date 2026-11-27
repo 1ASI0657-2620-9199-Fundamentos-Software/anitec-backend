@@ -52,6 +52,24 @@ public class DueDateScanningService(
                 .ScanAsync(cancellationToken);
             logger.LogInformation("Due date scan finished: {Created} alerts created, {Reactivated} snoozed alerts back",
                 result.Created.Count, result.Reactivated.Count);
+
+            // The e-mail is a second step on purpose: a provider that is down must not undo the alerts just created.
+            try
+            {
+                var notified = await serviceScope.ServiceProvider.GetRequiredService<IAlertNotifier>()
+                    .NotifyPendingAsync(cancellationToken);
+                logger.LogInformation(
+                    "Alert e-mails: {Sent} sent, {Failed} failed, {WithoutAddress} without address, {Skipped} skipped",
+                    notified.Sent, notified.Failed, notified.WithoutAddress, notified.Skipped);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Sending the alert e-mails failed; it will be tried again in the next pass");
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
