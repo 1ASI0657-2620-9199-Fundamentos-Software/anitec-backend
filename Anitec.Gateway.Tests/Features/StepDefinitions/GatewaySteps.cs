@@ -293,11 +293,23 @@ public class GatewaySteps(GatewayWorld world)
             (await world.Fixture.Client.GetAsync("/api/v1/subscription-plans")).StatusCode == HttpStatusCode.OK);
     }
 
+    /// <summary>
+    ///     The requests that arrive before the passive check marks the replica as unhealthy fail: how many of them
+    ///     depends on how fast the check runs and on how many idle connections to the dead replica the pool holds
+    ///     (on Windows 1, on a Linux runner of GitHub up to 3). The gateway does not retry, which is a declared limit.
+    /// </summary>
     [Then(@"at most (\d+) of those requests failed")]
     public void ThenAtMostFailed(int maximum)
     {
         var failures = world.Responses.Count(response => response.StatusCode != HttpStatusCode.OK);
         Assert.True(failures <= maximum, $"{failures} requests failed before the replica left the rotation");
+    }
+
+    [Then(@"the gateway takes a replica of the core out of the rotation")]
+    public async Task ThenTheGatewayTakesAReplicaOut()
+    {
+        await GatewayFixture.WaitUntilAsync(async () =>
+            (await world.Fixture.StatusAsync()).Any(item => item.Cluster == "core" && item.Health == "Unhealthy"));
     }
 
     [Then(@"(\d+) more requests to ""([^""]*)"" are all answered by the replica ""([^""]*)""")]

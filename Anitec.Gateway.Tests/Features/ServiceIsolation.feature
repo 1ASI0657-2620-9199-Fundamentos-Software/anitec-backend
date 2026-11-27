@@ -30,7 +30,8 @@ Feature: A failing service does not drag down the others
   Scenario: When a replica of the core fails, it leaves the rotation and requests keep being answered
     Given the replica "api1" of the core stops
     When a client sends GET "/api/v1/animals" 6 times
-    Then at most 1 of those requests failed
+    Then at most 3 of those requests failed
+    And the gateway takes a replica of the core out of the rotation
     And 10 more requests to "/api/v1/animals" are all answered by the replica "api2"
     And the gateway reports the replica "api1" as "Unhealthy" and "api2" as "Healthy"
 
